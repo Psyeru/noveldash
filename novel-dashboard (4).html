@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소설 통계 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ══════════════════════════════════════
+           1. CSS 변수 & 리셋
+        ══════════════════════════════════════ */
+        :root {
+            --bg-base:       #0d0f14;
+            --bg-card:       #141720;
+            --bg-card-hover: #1a1f2e;
+            --border:        #252a3a;
+            --border-bright: #343d56;
+            --accent-gold:   #c9a84c;
+            --accent-teal:   #4bc0c0;
+            --accent-rose:   #e05c7a;
+            --accent-green:  #4ade80;
+            --text-primary:  #e8eaf0;
+            --text-secondary:#9aa3bc;
+            --text-dim:      #5a6380;
+            --font-display:  'Nanum Myeongjo', serif;
+            --font-body:     'Noto Sans KR', sans-serif;
+            --radius-sm:  6px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+            --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* ══════════════════════════════════════
+           2. 레이아웃
+        ══════════════════════════════════════ */
+        .container { max-width: 1100px; margin: 0 auto; padding: 48px 28px 80px; }
+
+        /* ══════════════════════════════════════
+           3. 헤더
+        ══════════════════════════════════════ */
+        .header { margin-bottom: 36px; border-left: 3px solid var(--accent-gold); padding-left: 20px; }
+        .header-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-gold); margin-bottom: 8px; }
+        .header h1 { font-family: var(--font-display); font-size: clamp(24px, 4vw, 36px); font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+        .header p  { margin-top: 8px; font-size: 14px; color: var(--text-secondary); }
+
+        /* ══════════════════════════════════════
+           4. 상태 표시줄
+        ══════════════════════════════════════ */
+        .status-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 18px; border-radius: var(--radius-md);
+            border: 1px solid var(--border); background: var(--bg-card);
+            font-size: 13px; color: var(--text-secondary); margin-bottom: 28px;
+        }
+        .status-bar.loading { border-color: var(--accent-teal); }
+        .status-bar.error   { border-color: var(--accent-rose); color: var(--accent-rose); }
+        .spinner { width: 15px; height: 15px; border: 2px solid var(--border-bright); border-top-color: var(--accent-teal); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-teal); flex-shrink: 0; }
+        .status-bar.error .status-dot { background: var(--accent-rose); }
+
+        /* ══════════════════════════════════════
+           5. 요약 카드 (D-1 / D-day / 증감)
+        ══════════════════════════════════════ */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .summary-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 18px 20px;
+            transition: border-color var(--transition);
+        }
+        .summary-card:hover { border-color: var(--border-bright); }
+        .summary-card .s-label {
+            font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
+        }
+        .summary-card .s-value {
+            font-family: var(--font-display); font-size: 24px; font-weight: 700;
+            color: var(--text-primary); line-height: 1.1;
+        }
+        .summary-card .s-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+        .summary-card.c-teal  { border-color: rgba(75,192,192,0.25); }
+        .summary-card.c-teal  .s-value { color: var(--accent-teal); }
+        .summary-card.c-green { border-color: rgba(74,222,128,0.2); }
+        .summary-card.c-green .s-value { color: var(--accent-green); }
+        .summary-card.c-rose  { border-color: rgba(224,92,122,0.2); }
+        .summary-card.c-rose  .s-value { color: var(--accent-rose); }
+
+        /* ══════════════════════════════════════
+           6. 날짜 선택 + 뷰 탭 컨트롤
+        ══════════════════════════════════════ */
+        .controls-row {
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .date-control { display: flex; align-items: center; gap: 10px; }
+        .date-control label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .date-select {
+            background: var(--bg-card); border: 1px solid var(--border-bright);
+            border-radius: var(--radius-sm); color: var(--text-primary);
+            font-family: var(--font-body); font-size: 13px; padding: 8px 14px;
+            cursor: pointer; min-width: 150px; transition: border-color var(--transition);
+        }
+        .date-select:focus { outline: none; border-color: var(--accent-teal); }
+        .date-select option { background: #1c2030; }
+
+        /* 뷰 탭 (제목 / 작품번호) */
+        .view-tabs { display: flex; gap: 4px; margin-left: auto; }
+        .view-tab {
+            padding: 7px 16px; font-size: 12px; font-weight: 500;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: transparent; color: var(--text-dim);
+            font-family: var(--font-body); cursor: pointer;
+            transition: all var(--transition);
+        }
+        .view-tab:hover  { border-color: var(--border-bright); color: var(--text-secondary); }
+        .view-tab.active { border-color: var(--accent-teal); color: var(--accent-teal); background: rgba(75,192,192,0.07); }
+
+        /* ══════════════════════════════════════
+           7. 섹션 타이틀
+        ══════════════════════════════════════ */
+        .section-title {
+            font-family: var(--font-display); font-size: 17px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: 14px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        /* ══════════════════════════════════════
+           8. 랭킹 카드 목록
+        ══════════════════════════════════════ */
+        .ranking-list { margin-bottom: 0; }
+
+        /* 랭킹 카드 */
+        .rank-card {
+            display: flex; align-items: center; gap: 16px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 14px 18px;
+            margin-bottom: 8px; transition: all var(--transition); cursor: default;
+        }
+        .rank-card:hover { border-color: var(--border-bright); background: var(--bg-card-hover); }
+        .rank-card.active-card { border-color: var(--accent-teal); background: rgba(75,192,192,0.04); }
+
+        /* 순위 번호 */
+        .rank-num {
+            min-width: 32px; text-align: center;
+            font-family: var(--font-display); font-size: 18px; font-weight: 800;
+            color: var(--text-dim); flex-shrink: 0;
+        }
+        .rank-num.r1 { color: var(--accent-gold); }
+        .rank-num.r2 { color: #b0b8d4; }
+        .rank-num.r3 { color: #c8916a; }
+
+        /* 작품번호 컬럼 */
+        .rank-id-col {
+            flex-shrink: 0;
+            font-size: 11px; font-weight: 600;
+            color: var(--accent-teal);
+            background: rgba(75,192,192,0.08);
+            border: 1px solid rgba(75,192,192,0.18);
+            border-radius: 5px;
+            padding: 3px 9px;
+            white-space: nowrap;
+        }
+
+        /* 표지 이미지 */
+        .cover-img {
+            width: 44px; height: 60px; border-radius: 4px;
+            object-fit: cover; flex-shrink: 0;
+            background: var(--border); border: 1px solid var(--border-bright);
+        }
+        .cover-placeholder {
+            width: 44px; height: 60px; border-radius: 4px; flex-shrink: 0;
+            background: var(--border); border: 1px solid var(--border-bright);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: var(--text-dim);
+        }
+
+        /* 작품 정보 */
+        .rank-info { flex: 1; min-width: 0; }
+        .rank-title {
+            font-weight: 600; font-size: 14px; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* 뷰 모드: 작품번호 탭 */
+        .rank-id-badge {
+            display: inline-block; font-size: 11px; color: var(--accent-teal);
+            background: rgba(75,192,192,0.1); border: 1px solid rgba(75,192,192,0.2);
+            border-radius: 4px; padding: 1px 7px; margin-top: 3px;
+        }
+        .rank-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+        /* 수치 영역 */
+        .rank-stats { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
+        .rank-stat { text-align: right; }
+        .rank-stat .rs-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; }
+        .rank-stat .rs-val   { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+
+        /* 증감률 */
+        .growth-badge {
+            min-width: 90px; text-align: right;
+            font-size: 16px; font-weight: 700; flex-shrink: 0;
+        }
+
+        /* 인라인 바 */
+        .mini-bar { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+        .mini-bar-fill { height: 100%; border-radius: 2px; }
+        .mini-bar-fill.pos { background: linear-gradient(90deg,#4ade80,#22d3ee); }
+        .mini-bar-fill.neg { background: linear-gradient(90deg,var(--accent-rose),#f87171); }
+
+        /* 상세 버튼 */
+        .btn-detail {
+            padding: 7px 16px; border: 1px solid var(--border-bright);
+            border-radius: var(--radius-sm); background: transparent;
+            color: var(--text-secondary); font-family: var(--font-body);
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            transition: all var(--transition); white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-detail:hover  { border-color: var(--accent-teal); color: var(--accent-teal); background: rgba(75,192,192,0.06); }
+        .btn-detail.active { border-color: var(--accent-teal); color: var(--bg-base); background: var(--accent-teal); }
+
+        /* 더보기 버튼 */
+        .btn-more-wrap { text-align: center; margin-top: 12px; margin-bottom: 36px; }
+        .btn-more {
+            padding: 10px 32px; border: 1px solid var(--border-bright);
+            border-radius: var(--radius-md); background: var(--bg-card);
+            color: var(--text-secondary); font-family: var(--font-body);
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all var(--transition);
+        }
+        .btn-more:hover { border-color: var(--accent-teal); color: var(--accent-teal); }
+        .btn-more-wrap .count-info { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
+        /* ══════════════════════════════════════
+           9. 상세 패널
+        ══════════════════════════════════════ */
+        .detail-panel {
+            display: none; border: 1px solid var(--border);
+            border-radius: var(--radius-lg); background: var(--bg-card);
+            margin-bottom: 40px; overflow: hidden;
+            animation: fadeIn 0.3s ease;
+        }
+        .detail-panel.visible { display: block; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+        /* 상세 헤더 */
+        .detail-header {
+            display: flex; align-items: flex-start; gap: 20px;
+            padding: 24px 28px 20px; border-bottom: 1px solid var(--border);
+        }
+        .detail-cover {
+            width: 64px; height: 88px; border-radius: 6px;
+            object-fit: cover; flex-shrink: 0;
+            border: 1px solid var(--border-bright); background: var(--border);
+        }
+        .detail-cover-placeholder {
+            width: 64px; height: 88px; border-radius: 6px; flex-shrink: 0;
+            background: var(--border); border: 1px solid var(--border-bright);
+            display: flex; align-items: center; justify-content: center; font-size: 26px;
+        }
+        .detail-title-wrap .novel-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); }
+        .detail-title-wrap .novel-sub   { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+        .detail-title-wrap .novel-id    { display: inline-block; font-size: 12px; color: var(--accent-teal); background: rgba(75,192,192,0.1); border: 1px solid rgba(75,192,192,0.2); border-radius: 4px; padding: 2px 8px; margin-top: 6px; }
+
+        /* 메타 수치 */
+        .detail-meta { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+        .detail-meta-item { flex: 1; min-width: 120px; padding: 14px 22px; border-right: 1px solid var(--border); }
+        .detail-meta-item:last-child { border-right: none; }
+        .detail-meta-item .m-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+        .detail-meta-item .m-value { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-primary); }
+        .detail-meta-item .m-value.pos  { color: var(--accent-green); }
+        .detail-meta-item .m-value.neg  { color: var(--accent-rose); }
+        .detail-meta-item .m-value.teal { color: var(--accent-teal); }
+
+        /* 탭 */
+        .detail-tabs { display: flex; padding: 0 28px; border-bottom: 1px solid var(--border); }
+        .tab-btn {
+            padding: 13px 20px; font-size: 13px; font-weight: 500;
+            color: var(--text-dim); background: none; border: none;
+            border-bottom: 2px solid transparent; cursor: pointer;
+            font-family: var(--font-body); transition: all var(--transition); margin-bottom: -1px;
+        }
+        .tab-btn:hover  { color: var(--text-secondary); }
+        .tab-btn.active { color: var(--accent-teal); border-bottom-color: var(--accent-teal); }
+
+        /* 탭 콘텐츠 */
+        .tab-content { display: none; padding: 24px 28px; }
+        .tab-content.active { display: block; }
+        .chart-canvas-wrap { position: relative; height: 300px; }
+
+        /* 일별 상세 테이블 */
+        .detail-table-wrap {
+            max-height: 400px; overflow-y: auto;
+            border-radius: var(--radius-md); border: 1px solid var(--border);
+        }
+        .detail-table-wrap::-webkit-scrollbar { width: 5px; }
+        .detail-table-wrap::-webkit-scrollbar-track { background: var(--bg-base); }
+        .detail-table-wrap::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead tr { background: rgba(75,192,192,0.05); border-bottom: 1px solid var(--border-bright); position: sticky; top: 0; z-index: 1; }
+        th { padding: 12px 16px; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-teal); }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-card-hover); }
+        td { padding: 11px 16px; font-size: 13px; color: var(--text-primary); }
+        tbody tr.selected-date { background: rgba(75,192,192,0.06); }
+        tbody tr.selected-date td { color: var(--accent-teal); }
+
+        /* ══════════════════════════════════════
+           10. 공통 유틸
+        ══════════════════════════════════════ */
+        .pos { color: var(--accent-green); font-weight: 700; }
+        .neg { color: var(--accent-rose);  font-weight: 700; }
+        .zer { color: var(--text-dim);     font-weight: 500; }
+        .delta-chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+        .delta-chip.pos { background: rgba(74,222,128,0.12);  color: var(--accent-green); }
+        .delta-chip.neg { background: rgba(224,92,122,0.12);  color: var(--accent-rose); }
+        .delta-chip.zer { background: var(--border); color: var(--text-dim); }
+        .empty-state { padding: 40px 20px; color: var(--text-dim); font-size: 14px; }
+
+        /* ══════════════════════════════════════
+           11. 반응형
+        ══════════════════════════════════════ */
+        @media (max-width: 900px) {
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .rank-stats { gap: 14px; }
+            .rank-stat:nth-child(1), .rank-stat:nth-child(2) { display: none; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 20px 14px 60px; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .mini-bar { display: none; }
+            .rank-stats { gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ── 헤더 ── -->
+    <header class="header">
+        <div class="header-eyebrow">Novel Analytics Dashboard</div>
+        <h1>일별 조회수 통계</h1>
+        <p>Google Sheets 연동 · 날짜별 증감률 랭킹</p>
+    </header>
+
+    <!-- ── 상태 표시줄 ── -->
+    <div class="status-bar loading" id="statusBar">
+        <div class="spinner" id="statusIcon"></div>
+        <span id="statusText">데이터를 불러오는 중입니다...</span>
+    </div>
+
+    <!-- ── 요약 카드 ── -->
+    <div class="summary-grid" id="summaryGrid" style="display:none;">
+        <div class="summary-card">
+            <div class="s-label">총 작품 수</div>
+            <div class="s-value" id="sumNovels">—</div>
+            <div class="s-sub">전체 등록 작품</div>
+        </div>
+        <div class="summary-card">
+            <div class="s-label" id="labelDminus1">D-1 총 조회수</div>
+            <div class="s-value" id="sumDminus1">—</div>
+            <div class="s-sub" id="subDminus1">전일 합계</div>
+        </div>
+        <div class="summary-card c-teal">
+            <div class="s-label" id="labelDday">D-day 총 조회수</div>
+            <div class="s-value" id="sumDday">—</div>
+            <div class="s-sub" id="subDday">당일 합계</div>
+        </div>
+        <div class="summary-card" id="cardDelta">
+            <div class="s-label">증감수 (증감률)</div>
+            <div class="s-value" id="sumDelta">—</div>
+            <div class="s-sub" id="subDelta">—</div>
+        </div>
+    </div>
+
+    <!-- ── 컨트롤 행 (날짜) ── -->
+    <div class="controls-row" id="controlsRow" style="display:none;">
+        <div class="date-control">
+            <label for="dateSelect">📅 기준 날짜</label>
+            <select class="date-select" id="dateSelect" onchange="onDateChange()"></select>
+        </div>
+    </div>
+
+    <!-- ── 랭킹 섹션 ── -->
+    <h2 class="section-title" id="rankTitle">📊 증감률 랭킹</h2>
+    <div class="ranking-list" id="rankingList">
+        <div class="empty-state">데이터를 불러오는 중...</div>
+    </div>
+    <div class="btn-more-wrap" id="moreWrap" style="display:none;">
+        <button class="btn-more" id="btnMore" onclick="toggleMore()">더보기 ▾</button>
+        <div class="count-info" id="countInfo"></div>
+    </div>
+
+    <!-- ── 상세 패널 ── -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="detail-header">
+            <div id="detailCoverWrap"></div>
+            <div class="detail-title-wrap">
+                <div class="novel-title" id="detailTitle">—</div>
+                <div class="novel-id"    id="detailId">—</div>
+                <div class="novel-sub"   id="detailSub">—</div>
+            </div>
+        </div>
+        <div class="detail-meta" id="detailMeta"></div>
+        <div class="detail-tabs">
+            <button class="tab-btn active" onclick="switchTab('graph')">📊 그래프</button>
+            <button class="tab-btn"        onclick="switchTab('table')">📋 일별 데이터</button>
+        </div>
+        <div class="tab-content active" id="tab-graph">
+            <div class="chart-canvas-wrap"><canvas id="viewChart"></canvas></div>
+        </div>
+        <div class="tab-content" id="tab-table">
+            <div class="detail-table-wrap">
+                <table>
+                    <thead><tr>
+                        <th>날짜</th><th>조회수</th><th>전일 대비 변화량</th><th>증감률</th>
+                    </tr></thead>
+                    <tbody id="detailTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<script>
+/* ══════════════════════════════════════════════════
+   1. 상수 & 전역 변수
+══════════════════════════════════════════════════ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxfTUhG5Kj2NEHgWuNpYS182GLogwoZpRf5MmOg3AkDiMT1MMSBqO6hXmKoIDWOE01O3w/exec';
+
+let rawData      = [];       // 전체 원본 데이터
+let allStats     = [];       // 현재 날짜 기준 계산된 전체 랭킹
+let myChart      = null;     // Chart.js 인스턴스
+let activeId     = null;     // 현재 열린 상세 패널 소설번호
+let viewMode     = 'title';  // 'title' | 'id' — 뷰 탭 상태
+let showAll      = false;    // 더보기 상태
+const PAGE_SIZE  = 10;       // 기본 표시 개수
+
+// 이미지 필드 후보 (GAS 컬럼명이 다를 수 있으므로 순서대로 탐색)
+// GAS 시트의 이미지 컬럼명 후보 — 실제 필드명이 다를 경우 여기에 추가
+const IMG_KEYS = ['이미지 링크', '이미지', '표지', '표지이미지', '이미지URL', '표지URL', 'imageUrl', 'image', 'img', 'thumbnail', '썸네일', 'cover', 'coverImage'];
+
+
+/* ══════════════════════════════════════════════════
+   2. 상태 표시줄
+══════════════════════════════════════════════════ */
+function setStatus(mode, message) {
+    const bar  = document.getElementById('statusBar');
+    const icon = document.getElementById('statusIcon');
+    const text = document.getElementById('statusText');
+    bar.className    = 'status-bar ' + mode;
+    text.textContent = message;
+    icon.className   = (mode === 'loading') ? 'spinner' : 'status-dot';
+}
+
+
+/* ══════════════════════════════════════════════════
+   3. 데이터 패칭
+   redirect: 'follow' 는 GAS 302 리다이렉트 대응에 필수
+══════════════════════════════════════════════════ */
+async function fetchData() {
+    setStatus('loading', '데이터를 불러오는 중입니다...');
+    try {
+        const res = await fetch(API_URL, { method: 'GET', redirect: 'follow' });
+        if (!res.ok) throw new Error(`HTTP 오류: ${res.status}`);
+
+        const json = await res.json();
+        rawData = Array.isArray(json) ? json : (json.data || []);
+
+        if (rawData.length === 0) {
+            setStatus('error', '불러온 데이터가 없습니다.');
+            return;
+        }
+
+        // 조회수 숫자 정규화
+        rawData = rawData.map(item => ({
+            ...item,
+            조회수: Number(String(item.조회수).replace(/,/g, '')) || 0
+        }));
+
+        // 첫 번째 row를 콘솔에 출력 → 이미지 필드명 확인용
+        const sampleKeys = Object.keys(rawData[0]);
+        console.log('[데이터 샘플] 컬럼 목록:', sampleKeys);
+        console.log('[데이터 샘플] 첫 번째 행 전체:', rawData[0]);
+        // 이미지 후보 키 중 값이 있는 것 찾아서 출력
+        const foundImgKey = sampleKeys.find(k => String(rawData[0][k]||'').startsWith('http'));
+        console.log('[이미지 필드]', foundImgKey ? `"${foundImgKey}" = ${rawData[0][foundImgKey]}` : '없음 — 시트에 이미지 컬럼이 없거나 필드명이 다릅니다');
+
+        setStatus('success', `✓ 데이터 로드 완료 — 총 ${rawData.length}건`);
+        initDashboard();
+
+    } catch (err) {
+        console.error('[fetchData] 오류:', err);
+        setStatus('error', `데이터 로드 실패: ${err.message}`);
+    }
+}
+
+
+/* ══════════════════════════════════════════════════
+   4. 대시보드 초기화
+   - 날짜 드롭다운 생성
+   - 요약 카드 / 랭킹 첫 렌더링
+══════════════════════════════════════════════════ */
+function initDashboard() {
+    // 고유 날짜 목록 (오름차순)
+    const allDates = [...new Set(rawData.map(d => normalizeDate(d.날짜)))]
+        .filter(Boolean).sort();
+
+    // 날짜 셀렉트 (최신 날짜가 맨 위)
+    const select = document.getElementById('dateSelect');
+    select.innerHTML = '';
+    [...allDates].reverse().forEach(date => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = date;
+        select.appendChild(opt);
+    });
+
+    document.getElementById('summaryGrid').style.display = '';
+    document.getElementById('controlsRow').style.display = '';
+
+    onDateChange();
+}
+
+
+/* ══════════════════════════════════════════════════
+   5. 날짜 변경 핸들러
+══════════════════════════════════════════════════ */
+function onDateChange() {
+    const sel = document.getElementById('dateSelect').value;
+    document.getElementById('rankTitle').textContent = `📊 ${sel} 기준 증감률 랭킹`;
+
+    // 상세 패널 닫기
+    closeDetail();
+
+    // 전체 통계 계산 (요약 카드용)
+    calcSummary(sel);
+
+    // 전체 랭킹 계산 & 렌더
+    allStats = calcStats(sel);
+    showAll  = false;
+    renderRanking();
+}
+
+
+/* ══════════════════════════════════════════════════
+   6. 요약 카드 계산 & 렌더
+   선택 날짜(D-day)와 직전 날짜(D-1) 전체 조회수 합계 비교
+══════════════════════════════════════════════════ */
+function calcSummary(selectedDate) {
+    // 소설별 그룹화 후 각 소설에서 D-day / D-1 날짜 찾기
+    const groups = groupByNovel();
+    let totalDday = 0, totalDminus1 = 0;
+    let dminus1Date = '';
+
+    for (const id in groups) {
+        const list   = groups[id];
+        const curIdx = list.findIndex(d => normalizeDate(d.날짜) === selectedDate);
+        if (curIdx < 0) continue;
+        totalDday += list[curIdx].조회수;
+        if (curIdx > 0) {
+            totalDminus1 += list[curIdx - 1].조회수;
+            dminus1Date   = normalizeDate(list[curIdx - 1].날짜);
+        }
+    }
+
+    const totalNovels = Object.keys(groups).length;
+    const delta       = totalDday - totalDminus1;
+    const growthRate  = totalDminus1 === 0 ? 0
+        : parseFloat(((delta / totalDminus1) * 100).toFixed(2));
+    const dc = delta > 0 ? 'pos' : delta < 0 ? 'neg' : '';
+    const dp = delta > 0 ? '+' : '';
+
+    document.getElementById('sumNovels').textContent    = totalNovels.toLocaleString();
+    document.getElementById('sumDminus1').textContent   = totalDminus1.toLocaleString();
+    document.getElementById('labelDminus1').textContent = dminus1Date ? `${dminus1Date} 총 조회수` : 'D-1 총 조회수';
+    document.getElementById('subDminus1').textContent   = '전일 합계';
+    document.getElementById('sumDday').textContent      = totalDday.toLocaleString();
+    document.getElementById('labelDday').textContent    = `${selectedDate} 총 조회수`;
+    document.getElementById('subDday').textContent      = '당일 합계';
+    document.getElementById('sumDelta').textContent     = `${dp}${delta.toLocaleString()}`;
+    document.getElementById('subDelta').textContent     = `증감률 ${dp}${growthRate}%`;
+
+    // 증감에 따라 카드 색상 변경
+    const card = document.getElementById('cardDelta');
+    card.className = 'summary-card ' + (delta > 0 ? 'c-green' : delta < 0 ? 'c-rose' : '');
+    document.getElementById('sumDelta').className = 's-value ' + dc;
+}
+
+
+/* ══════════════════════════════════════════════════
+   7. 소설별 그룹화 유틸
+   날짜 오름차순 정렬된 { id: [...] } 반환
+══════════════════════════════════════════════════ */
+function groupByNovel() {
+    const groups = {};
+    rawData.forEach(item => {
+        const id = String(item.소설번호);
+        if (!groups[id]) groups[id] = [];
+        groups[id].push(item);
+    });
+    for (const id in groups) {
+        groups[id].sort((a, b) => new Date(normalizeDate(a.날짜)) - new Date(normalizeDate(b.날짜)));
+    }
+    return groups;
+}
+
+
+/* ══════════════════════════════════════════════════
+   8. 특정 날짜 기준 전체 증감률 계산
+   증감률 = ((현재 - 이전) / 이전) × 100
+   변화량 = 현재 - 이전
+══════════════════════════════════════════════════ */
+function calcStats(selectedDate) {
+    const groups = groupByNovel();
+    const stats  = [];
+
+    for (const id in groups) {
+        const list   = groups[id];
+        const curIdx = list.findIndex(d => normalizeDate(d.날짜) === selectedDate);
+        if (curIdx <= 0) continue;
+
+        const cur       = list[curIdx];
+        const prev      = list[curIdx - 1];
+        const curViews  = cur.조회수;
+        const prevViews = prev.조회수;
+        const delta     = curViews - prevViews;
+        const growth    = prevViews === 0
+            ? 0
+            : parseFloat(((delta / prevViews) * 100).toFixed(2));
+
+        // 이미지 URL 탐색 (여러 후보 키 순서대로 시도)
+        const imgUrl = getImageUrl(cur);
+
+        stats.push({
+            id, title: cur.제목, growth, delta,
+            curViews, prevViews, imgUrl,
+            history: list
+        });
+    }
+
+    stats.sort((a, b) => b.growth - a.growth);
+    return stats;
+}
+
+
+/* ══════════════════════════════════════════════════
+   9. 이미지 URL 추출 유틸
+   IMG_KEYS 목록에서 값이 있는 첫 번째 키 반환
+══════════════════════════════════════════════════ */
+function getImageUrl(item) {
+    for (const key of IMG_KEYS) {
+        if (item[key] && String(item[key]).trim().startsWith('http')) {
+            return String(item[key]).trim();
+        }
+    }
+    return null;
+}
+
+
+/* ══════════════════════════════════════════════════
+   10. 랭킹 렌더링
+   showAll === false → 상위 PAGE_SIZE개만 표시
+   showAll === true  → 전체 표시
+══════════════════════════════════════════════════ */
+function renderRanking() {
+    const container = document.getElementById('rankingList');
+    container.innerHTML = '';
+
+    if (allStats.length === 0) {
+        container.innerHTML = '<div class="empty-state">선택한 날짜에 비교 가능한 데이터가 없습니다.</div>';
+        document.getElementById('moreWrap').style.display = 'none';
+        return;
+    }
+
+    // 표시할 항목 수 결정
+    const displayList = showAll ? allStats : allStats.slice(0, PAGE_SIZE);
+
+    // 인라인 바 너비 계산용 최대 절대 증감률
+    const maxAbs = Math.max(...allStats.map(d => Math.abs(d.growth)), 1);
+
+    displayList.forEach((item, index) => {
+        const rank    = index + 1;
+        const numCls  = rank <= 3 ? `r${rank}` : '';
+        const gc      = item.growth > 0 ? 'pos' : item.growth < 0 ? 'neg' : 'zer';
+        const gPrefix = item.growth > 0 ? '+' : '';
+        const dc      = item.delta  > 0 ? 'pos' : item.delta  < 0 ? 'neg' : 'zer';
+        const dPrefix = item.delta  > 0 ? '+' : '';
+        const barPct  = (Math.abs(item.growth) / maxAbs * 100).toFixed(1);
+        const barCls  = item.growth >= 0 ? 'pos' : 'neg';
+        const isActive = (item.id === activeId);
+
+        const card = document.createElement('div');
+        card.className = 'rank-card' + (isActive ? ' active-card' : '');
+        card.id = `card-${item.id}`;
+
+        // 표지 이미지 or 플레이스홀더
+        const coverHtml = item.imgUrl
+            ? `<img class="cover-img" src="${item.imgUrl}" alt="표지" referrerpolicy="no-referrer"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+               <div class="cover-placeholder" style="display:none;">📖</div>`
+            : `<div class="cover-placeholder">📖</div>`;
+
+        // 제목 + 작품번호 항상 표시
+        const infoHtml = `<div class="rank-title">${item.title}</div>
+               <div class="rank-meta">${item.history.length}일 데이터</div>`;
+
+        card.innerHTML = `
+            <div class="rank-num ${numCls}">${rank}</div>
+            <div class="rank-id-col">${item.id}</div>
+            ${coverHtml}
+            <div class="rank-info">${infoHtml}</div>
+            <div class="rank-stats">
+                <div class="rank-stat">
+                    <div class="rs-label">전일</div>
+                    <div class="rs-val">${item.prevViews.toLocaleString()}</div>
+                </div>
+                <div class="rank-stat">
+                    <div class="rs-label">당일</div>
+                    <div class="rs-val">${item.curViews.toLocaleString()}</div>
+                </div>
+                <div class="rank-stat">
+                    <div class="rs-label">변화량</div>
+                    <div class="rs-val"><span class="delta-chip ${dc}">${dPrefix}${item.delta.toLocaleString()}</span></div>
+                </div>
+            </div>
+            <div class="growth-badge ${gc}">${gPrefix}${item.growth}%</div>
+            <div class="mini-bar"><div class="mini-bar-fill ${barCls}" style="width:${barPct}%"></div></div>
+            <button class="btn-detail${isActive ? ' active' : ''}" id="btn-${item.id}"
+                onclick="openDetail('${item.id}')">상세</button>
+        `;
+        container.appendChild(card);
+    });
+
+    // 더보기 버튼 & 카운트 정보 업데이트
+    const moreWrap = document.getElementById('moreWrap');
+    const countInfo = document.getElementById('countInfo');
+    const btnMore   = document.getElementById('btnMore');
+
+    if (allStats.length > PAGE_SIZE) {
+        moreWrap.style.display = '';
+        countInfo.textContent = showAll
+            ? `전체 ${allStats.length}개 표시 중`
+            : `${PAGE_SIZE}개 표시 중 / 전체 ${allStats.length}개`;
+        btnMore.textContent = showAll ? '접기 ▴' : `더보기 (${allStats.length - PAGE_SIZE}개 더) ▾`;
+    } else {
+        moreWrap.style.display = 'none';
+    }
+}
+
+
+/* ══════════════════════════════════════════════════
+   11. 더보기 토글
+══════════════════════════════════════════════════ */
+function toggleMore() {
+    showAll = !showAll;
+    renderRanking();
+    // 접을 때 랭킹 목록 상단으로 스크롤
+    if (!showAll) document.getElementById('rankingList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+/* setViewMode 제거됨 — 작품번호는 항상 카드 내 컬럼으로 표시 */
+
+
+/* ══════════════════════════════════════════════════
+   13. 상세 패널 열기
+══════════════════════════════════════════════════ */
+function openDetail(novelId) {
+    // 이전 활성 버튼/카드 해제
+    if (activeId) {
+        const pb = document.getElementById('btn-' + activeId);
+        const pc = document.getElementById('card-' + activeId);
+        if (pb) pb.classList.remove('active');
+        if (pc) pc.classList.remove('active-card');
+    }
+    activeId = novelId;
+    const cb = document.getElementById('btn-' + novelId);
+    const cc = document.getElementById('card-' + novelId);
+    if (cb) cb.classList.add('active');
+    if (cc) cc.classList.add('active-card');
+
+    // 해당 소설 이력
+    const history = rawData
+        .filter(d => String(d.소설번호) === String(novelId))
+        .sort((a, b) => new Date(normalizeDate(a.날짜)) - new Date(normalizeDate(b.날짜)));
+    if (!history.length) return;
+
+    const selectedDate = document.getElementById('dateSelect').value;
+    const latestItem   = history[history.length - 1];
+    const title        = latestItem.제목;
+    const imgUrl       = getImageUrl(latestItem);
+    const firstViews   = history[0].조회수;
+    const lastViews    = latestItem.조회수;
+    const totalDelta   = lastViews - firstViews;
+    const totalGrowth  = firstViews === 0 ? 0
+        : parseFloat(((totalDelta / firstViews) * 100).toFixed(2));
+
+    // 선택 날짜 증감
+    const selIdx = history.findIndex(d => normalizeDate(d.날짜) === selectedDate);
+    let selDelta = null, selGrowth = null;
+    if (selIdx > 0) {
+        const sc = history[selIdx].조회수, sp = history[selIdx - 1].조회수;
+        selDelta  = sc - sp;
+        selGrowth = sp === 0 ? 0 : parseFloat(((selDelta / sp) * 100).toFixed(2));
+    }
+
+    // 헤더
+    const coverWrap = document.getElementById('detailCoverWrap');
+    coverWrap.innerHTML = imgUrl
+        ? `<img class="detail-cover" src="${imgUrl}" alt="표지" referrerpolicy="no-referrer"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="detail-cover-placeholder" style="display:none;">📖</div>`
+        : `<div class="detail-cover-placeholder">📖</div>`;
+
+    document.getElementById('detailTitle').textContent = title;
+    document.getElementById('detailId').textContent    = `No.${novelId}`;
+    document.getElementById('detailSub').textContent   =
+        `데이터 ${history.length}일 · ${normalizeDate(history[0].날짜)} ~ ${normalizeDate(latestItem.날짜)}`;
+
+    // 메타 카드
+    const tgc = totalGrowth > 0 ? 'pos' : totalGrowth < 0 ? 'neg' : '';
+    const tgp = totalGrowth > 0 ? '+' : '';
+    const sgc = selGrowth !== null ? (selGrowth > 0 ? 'pos' : selGrowth < 0 ? 'neg' : '') : '';
+    const sgp = selGrowth !== null && selGrowth > 0 ? '+' : '';
+    const sdc = selDelta  !== null ? (selDelta  > 0 ? 'pos' : selDelta  < 0 ? 'neg' : '') : '';
+    const sdp = selDelta  !== null && selDelta  > 0 ? '+' : '';
+
+    document.getElementById('detailMeta').innerHTML = `
+        <div class="detail-meta-item">
+            <div class="m-label">최신 조회수</div>
+            <div class="m-value teal">${lastViews.toLocaleString()}</div>
+        </div>
+        <div class="detail-meta-item">
+            <div class="m-label">전체 기간 변화량</div>
+            <div class="m-value ${tgc}">${tgp}${totalDelta.toLocaleString()}</div>
+        </div>
+        <div class="detail-meta-item">
+            <div class="m-label">전체 기간 증감률</div>
+            <div class="m-value ${tgc}">${tgp}${totalGrowth}%</div>
+        </div>
+        <div class="detail-meta-item">
+            <div class="m-label">${selectedDate} 변화량</div>
+            <div class="m-value ${sdc}">${selDelta !== null ? sdp + selDelta.toLocaleString() : '—'}</div>
+        </div>
+        <div class="detail-meta-item">
+            <div class="m-label">${selectedDate} 증감률</div>
+            <div class="m-value ${sgc}">${selGrowth !== null ? sgp + selGrowth + '%' : '—'}</div>
+        </div>
+    `;
+
+    // 그래프 & 일별 테이블
+    renderChart(history, selectedDate);
+    renderDetailTable(history, selectedDate);
+
+    // 패널 표시 & 스크롤
+    const panel = document.getElementById('detailPanel');
+    panel.classList.add('visible');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+/* ══════════════════════════════════════════════════
+   14. 상세 패널 닫기
+══════════════════════════════════════════════════ */
+function closeDetail() {
+    if (activeId) {
+        const pb = document.getElementById('btn-' + activeId);
+        const pc = document.getElementById('card-' + activeId);
+        if (pb) pb.classList.remove('active');
+        if (pc) pc.classList.remove('active-card');
+        activeId = null;
+    }
+    document.getElementById('detailPanel').classList.remove('visible');
+}
+
+
+/* ══════════════════════════════════════════════════
+   15. Chart.js 차트 렌더링
+   - 기존 인스턴스 반드시 destroy() 후 재생성
+   - 데이터셋 1: 누적 조회수 (왼쪽 Y축)
+   - 데이터셋 2: 일별 증감량 (오른쪽 Y축, 점선)
+   - 선택 날짜 세로 점선 + 포인트 금색 강조
+══════════════════════════════════════════════════ */
+function renderChart(history, selectedDate) {
+    const labels     = history.map(d => normalizeDate(d.날짜));
+    const views      = history.map(d => d.조회수);
+    const dailyDelta = views.map((v, i) => i === 0 ? null : v - views[i - 1]);
+    const selIdx     = labels.indexOf(selectedDate);
+
+    // ★ 기존 Chart 인스턴스 파괴
+    if (myChart) { myChart.destroy(); myChart = null; }
+
+    const ctx      = document.getElementById('viewChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0,   'rgba(75,192,192,0.25)');
+    gradient.addColorStop(0.7, 'rgba(75,192,192,0.03)');
+    gradient.addColorStop(1,   'rgba(75,192,192,0)');
+
+    // 선택 날짜 세로 점선 플러그인
+    const vLinePlugin = {
+        id: 'vLine',
+        afterDraw(chart) {
+            if (selIdx < 0) return;
+            const { ctx: c, chartArea: { top, bottom }, scales: { x } } = chart;
+            const xp = x.getPixelForValue(selIdx);
+            c.save();
+            c.beginPath();
+            c.strokeStyle = 'rgba(201,168,76,0.55)';
+            c.lineWidth   = 1.5;
+            c.setLineDash([4, 4]);
+            c.moveTo(xp, top); c.lineTo(xp, bottom);
+            c.stroke(); c.restore();
+        }
+    };
+
+    myChart = new Chart(ctx, {
+        type: 'line',
+        plugins: [vLinePlugin],
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: '조회수',
+                    data: views,
+                    borderColor: '#4bc0c0',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: labels.map(l => l === selectedDate ? '#c9a84c' : '#4bc0c0'),
+                    pointRadius:          labels.map(l => l === selectedDate ? 7 : (history.length > 30 ? 2 : 3)),
+                    pointHoverRadius: 7,
+                    pointBorderColor: '#0d0f14', pointBorderWidth: 2,
+                    tension: 0.3, fill: true, yAxisID: 'yMain'
+                },
+                {
+                    label: '일별 증감',
+                    data: dailyDelta,
+                    borderColor: 'rgba(201,168,76,0.65)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5, borderDash: [4, 4],
+                    pointRadius: 0, pointHoverRadius: 4,
+                    tension: 0.3, fill: false,
+                    yAxisID: 'yDelta', spanGaps: false
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#9aa3bc', font: { family: "'Noto Sans KR', sans-serif", size: 12 }, boxWidth: 14, padding: 16 } },
+                tooltip: {
+                    backgroundColor: '#1c2030', borderColor: '#343d56', borderWidth: 1,
+                    titleColor: '#e8eaf0', bodyColor: '#9aa3bc', padding: 12,
+                    callbacks: {
+                        label(context) {
+                            const val = context.parsed.y;
+                            if (val === null || val === undefined) return null;
+                            const sign = (context.datasetIndex === 1 && val > 0) ? '+' : '';
+                            return ` ${context.dataset.label}: ${sign}${val.toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)', drawTicks: false },
+                    ticks: { color: '#5a6380', font: { size: 11 }, maxRotation: 45, maxTicksLimit: 16 }
+                },
+                yMain: {
+                    position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.04)', drawTicks: false },
+                    ticks: { color: '#4bc0c0', font: { size: 11 }, callback: v => v.toLocaleString() }
+                },
+                yDelta: {
+                    position: 'right', grid: { display: false },
+                    ticks: { color: 'rgba(201,168,76,0.7)', font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v.toLocaleString() }
+                }
+            }
+        }
+    });
+}
+
+
+/* ══════════════════════════════════════════════════
+   16. 일별 데이터 테이블 렌더링
+   최신 날짜 맨 위, 선택 날짜 행 강조
+══════════════════════════════════════════════════ */
+function renderDetailTable(history, selectedDate) {
+    const tbody = document.getElementById('detailTableBody');
+    tbody.innerHTML = '';
+
+    [...history].reverse().forEach((item, ri) => {
+        const origIdx  = history.length - 1 - ri;
+        const dateStr  = normalizeDate(item.날짜);
+        const curViews = item.조회수;
+        let delta = null, growth = null;
+        if (origIdx > 0) {
+            const pv = history[origIdx - 1].조회수;
+            delta  = curViews - pv;
+            growth = pv === 0 ? 0 : parseFloat(((delta / pv) * 100).toFixed(2));
+        }
+        const isSelected = (dateStr === selectedDate);
+        const dc  = delta  === null ? 'zer' : delta  > 0 ? 'pos' : delta  < 0 ? 'neg' : 'zer';
+        const dp  = delta  !== null && delta  > 0 ? '+' : '';
+        const gc2 = growth === null ? 'zer' : growth > 0 ? 'pos' : growth < 0 ? 'neg' : 'zer';
+        const gp  = growth !== null && growth > 0 ? '+' : '';
+
+        const tr = document.createElement('tr');
+        if (isSelected) tr.classList.add('selected-date');
+        tr.innerHTML = `
+            <td>${dateStr}${isSelected ? ' <span style="font-size:10px;color:var(--accent-gold);font-weight:600;">◀</span>' : ''}</td>
+            <td style="font-weight:600;">${curViews.toLocaleString()}</td>
+            <td>${delta !== null ? `<span class="delta-chip ${dc}">${dp}${delta.toLocaleString()}</span>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+            <td>${growth !== null ? `<span class="${gc2}" style="font-weight:700;">${gp}${growth}%</span>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+
+/* ══════════════════════════════════════════════════
+   17. 탭 전환 (그래프 ↔ 일별 데이터)
+══════════════════════════════════════════════════ */
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (i === 0 && tabId === 'graph') || (i === 1 && tabId === 'table'));
+    });
+    document.getElementById('tab-graph').classList.toggle('active', tabId === 'graph');
+    document.getElementById('tab-table').classList.toggle('active', tabId === 'table');
+}
+
+
+/* ══════════════════════════════════════════════════
+   18. 날짜 정규화 (ISO → YYYY-MM-DD)
+══════════════════════════════════════════════════ */
+function normalizeDate(raw) {
+    if (!raw) return '';
+    const str = String(raw).trim();
+    if (str.includes('T')) return str.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const dt = new Date(str);
+    if (!isNaN(dt)) return dt.toISOString().slice(0, 10);
+    return str;
+}
+
+
+/* ══════════════════════════════════════════════════
+   19. 초기 실행
+══════════════════════════════════════════════════ */
+fetchData();
+</script>
+</body>
+</html>
