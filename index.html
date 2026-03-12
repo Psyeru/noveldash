@@ -171,7 +171,36 @@
         .rank-num.r2 { color: #b0b8d4; }
         .rank-num.r3 { color: #c8916a; }
 
-        /* 작품번호 컬럼 */
+
+        /* 랭킹 정렬 헤더 바 */
+        .rank-header {
+            display: flex; align-items: center; gap: 16px;
+            padding: 8px 18px; margin-bottom: 6px;
+            font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--text-dim);
+        }
+        .rank-header .rh-num   { min-width: 32px; flex-shrink: 0; }
+        .rank-header .rh-id    { flex-shrink: 0; min-width: 70px; }
+        .rank-header .rh-cover { width: 44px; flex-shrink: 0; }
+        .rank-header .rh-info  { flex: 1; }
+        .rank-header .rh-stats { display: flex; gap: 24px; flex-shrink: 0; }
+        .rank-header .rh-stat  { min-width: 60px; text-align: right; }
+        .rank-header .rh-growth { min-width: 90px; text-align: right; }
+        .rank-header .rh-bar   { width: 60px; flex-shrink: 0; }
+        .rank-header .rh-btn   { width: 52px; flex-shrink: 0; }
+
+        .sort-btn {
+            background: none; border: none; cursor: pointer;
+            font-family: var(--font-body); font-size: 10px; font-weight: 500;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            color: var(--text-dim); padding: 4px 6px; border-radius: 4px;
+            transition: all var(--transition); white-space: nowrap;
+        }
+        .sort-btn:hover { color: var(--text-secondary); background: var(--border); }
+        .sort-btn.active { color: var(--accent-teal); }
+        .sort-arrow { margin-left: 3px; font-size: 9px; }
+
+        /* 작품번호 클릭 링크 */
         .rank-id-col {
             flex-shrink: 0;
             font-size: 11px; font-weight: 600;
@@ -181,7 +210,16 @@
             border-radius: 5px;
             padding: 3px 9px;
             white-space: nowrap;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all var(--transition);
+            min-width: 70px; text-align: center;
         }
+        .rank-id-col:hover {
+            background: rgba(75,192,192,0.18);
+            border-color: var(--accent-teal);
+        }
+
 
         /* 표지 이미지 */
         .cover-img {
@@ -213,8 +251,8 @@
         /* 수치 영역 */
         .rank-stats { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
         .rank-stat { text-align: right; }
-        .rank-stat .rs-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; }
-        .rank-stat .rs-val   { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .rank-stat .rs-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; margin-bottom: 2px; }
+        .rank-stat .rs-val   { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 
         /* 증감률 */
         .growth-badge {
@@ -405,6 +443,43 @@
 
     <!-- ── 랭킹 섹션 ── -->
     <h2 class="section-title" id="rankTitle">📊 증감률 랭킹</h2>
+
+    <!-- 정렬 헤더 바 -->
+    <div class="rank-header" id="rankHeader" style="display:none;">
+        <div class="rh-num">#</div>
+        <div class="rh-id"></div>
+        <div class="rh-cover"></div>
+        <div class="rh-info">
+            <button class="sort-btn" onclick="setSort('title')">
+                제목<span class="sort-arrow" id="arr-title"></span>
+            </button>
+        </div>
+        <div class="rh-stats">
+            <div class="rh-stat">
+                <button class="sort-btn" onclick="setSort('prevViews')">
+                    전일<span class="sort-arrow" id="arr-prevViews"></span>
+                </button>
+            </div>
+            <div class="rh-stat">
+                <button class="sort-btn" onclick="setSort('curViews')">
+                    당일<span class="sort-arrow" id="arr-curViews"></span>
+                </button>
+            </div>
+            <div class="rh-stat">
+                <button class="sort-btn" onclick="setSort('delta')">
+                    변화량<span class="sort-arrow" id="arr-delta"></span>
+                </button>
+            </div>
+        </div>
+        <div class="rh-growth">
+            <button class="sort-btn active" onclick="setSort('growth')">
+                증감률<span class="sort-arrow" id="arr-growth">▼</span>
+            </button>
+        </div>
+        <div class="rh-bar"></div>
+        <div class="rh-btn"></div>
+    </div>
+
     <div class="ranking-list" id="rankingList">
         <div class="empty-state">데이터를 불러오는 중...</div>
     </div>
@@ -419,8 +494,11 @@
             <div id="detailCoverWrap"></div>
             <div class="detail-title-wrap">
                 <div class="novel-title" id="detailTitle">—</div>
-                <div class="novel-id"    id="detailId">—</div>
-                <div class="novel-sub"   id="detailSub">—</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                    <a class="rank-id-col" id="detailId" href="#" target="_blank" rel="noopener" style="font-size:13px;padding:4px 12px;">—</a>
+                    <span id="detailPlusDate" style="font-size:12px;color:var(--accent-gold);background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:5px;padding:3px 10px;display:none;">⭐ 플러스 —</span>
+                </div>
+                <div class="novel-sub" id="detailSub">—</div>
             </div>
         </div>
         <div class="detail-meta" id="detailMeta"></div>
@@ -455,9 +533,12 @@ let rawData      = [];       // 전체 원본 데이터
 let allStats     = [];       // 현재 날짜 기준 계산된 전체 랭킹
 let myChart      = null;     // Chart.js 인스턴스
 let activeId     = null;     // 현재 열린 상세 패널 소설번호
-let viewMode     = 'title';  // 'title' | 'id' — 뷰 탭 상태
 let showAll      = false;    // 더보기 상태
 const PAGE_SIZE  = 10;       // 기본 표시 개수
+
+// 정렬 상태: key = 정렬 컬럼, dir = 'desc'|'asc'
+let sortKey = 'growth';
+let sortDir = 'desc';
 
 // 이미지 필드 후보 (GAS 컬럼명이 다를 수 있으므로 순서대로 탐색)
 // GAS 시트의 이미지 컬럼명 후보 — 실제 필드명이 다를 경우 여기에 추가
@@ -540,8 +621,10 @@ function initDashboard() {
 
     document.getElementById('summaryGrid').style.display = '';
     document.getElementById('controlsRow').style.display = '';
+    document.getElementById('rankHeader').style.display  = '';
 
     onDateChange();
+    updateSortArrows();
 }
 
 
@@ -561,6 +644,7 @@ function onDateChange() {
     // 전체 랭킹 계산 & 렌더
     allStats = calcStats(sel);
     showAll  = false;
+    applySort();
     renderRanking();
 }
 
@@ -729,7 +813,7 @@ function renderRanking() {
 
         card.innerHTML = `
             <div class="rank-num ${numCls}">${rank}</div>
-            <div class="rank-id-col">${item.id}</div>
+            <a class="rank-id-col" href="https://novelpia.com/novel/${item.id}" target="_blank" rel="noopener">${item.id}</a>
             ${coverHtml}
             <div class="rank-info">${infoHtml}</div>
             <div class="rank-stats">
@@ -836,8 +920,23 @@ function openDetail(novelId) {
         : `<div class="detail-cover-placeholder">📖</div>`;
 
     document.getElementById('detailTitle').textContent = title;
-    document.getElementById('detailId').textContent    = `No.${novelId}`;
-    document.getElementById('detailSub').textContent   =
+
+    // 작품번호: No. 없이 숫자만, 클릭 시 novelpia 링크
+    const idEl = document.getElementById('detailId');
+    idEl.textContent = novelId;
+    idEl.href = 'https://novelpia.com/novel/' + novelId;
+
+    // 플러스일자 배지
+    const plusDateEl = document.getElementById('detailPlusDate');
+    const plusRaw = latestItem['플러스일자'] || latestItem['플러스_일자'] || latestItem['plusDate'] || '';
+    if (plusRaw) {
+        plusDateEl.textContent = '\u2b50 플러스 ' + normalizeDate(plusRaw);
+        plusDateEl.style.display = '';
+    } else {
+        plusDateEl.style.display = 'none';
+    }
+
+    document.getElementById('detailSub').textContent =
         `데이터 ${history.length}일 · ${normalizeDate(history[0].날짜)} ~ ${normalizeDate(latestItem.날짜)}`;
 
     // 메타 카드
@@ -919,20 +1018,51 @@ function renderChart(history, selectedDate) {
     gradient.addColorStop(0.7, 'rgba(75,192,192,0.03)');
     gradient.addColorStop(1,   'rgba(75,192,192,0)');
 
-    // 선택 날짜 세로 점선 플러그인
+    // 플러스일자 인덱스 탐색
+    const plusDateRaw = history.length > 0
+        ? (history[history.length-1]['플러스일자'] || history[history.length-1]['플러스_일자'] || history[history.length-1]['plusDate'] || '')
+        : '';
+    const plusDateStr = normalizeDate(plusDateRaw);
+    const plusIdx     = plusDateStr ? labels.indexOf(plusDateStr) : -1;
+
+    // 선택 날짜(금색 점선) + 플러스일자(별 표시) 세로선 플러그인
     const vLinePlugin = {
         id: 'vLine',
         afterDraw(chart) {
-            if (selIdx < 0) return;
             const { ctx: c, chartArea: { top, bottom }, scales: { x } } = chart;
-            const xp = x.getPixelForValue(selIdx);
-            c.save();
-            c.beginPath();
-            c.strokeStyle = 'rgba(201,168,76,0.55)';
-            c.lineWidth   = 1.5;
-            c.setLineDash([4, 4]);
-            c.moveTo(xp, top); c.lineTo(xp, bottom);
-            c.stroke(); c.restore();
+
+            // 선택 날짜 — 금색 점선
+            if (selIdx >= 0) {
+                const xp = x.getPixelForValue(selIdx);
+                c.save();
+                c.beginPath();
+                c.strokeStyle = 'rgba(201,168,76,0.6)';
+                c.lineWidth   = 1.5;
+                c.setLineDash([4, 4]);
+                c.moveTo(xp, top); c.lineTo(xp, bottom);
+                c.stroke();
+                c.restore();
+            }
+
+            // 플러스일자 — 별(⭐) 아이콘 + 연보라 세로선
+            if (plusIdx >= 0) {
+                const xp = x.getPixelForValue(plusIdx);
+                c.save();
+                // 세로선
+                c.beginPath();
+                c.strokeStyle = 'rgba(180,130,255,0.55)';
+                c.lineWidth   = 1.5;
+                c.setLineDash([3, 3]);
+                c.moveTo(xp, top); c.lineTo(xp, bottom);
+                c.stroke();
+                // 상단 별 레이블
+                c.setLineDash([]);
+                c.fillStyle = 'rgba(180,130,255,0.9)';
+                c.font = '11px sans-serif';
+                c.textAlign = 'center';
+                c.fillText('⭐', xp, top + 12);
+                c.restore();
+            }
         }
     };
 
@@ -1042,7 +1172,50 @@ function renderDetailTable(history, selectedDate) {
 
 
 /* ══════════════════════════════════════════════════
-   17. 탭 전환 (그래프 ↔ 일별 데이터)
+   17. 정렬 설정 & 적용
+══════════════════════════════════════════════════ */
+function setSort(key) {
+    // 같은 키 재클릭 시 방향 토글, 다른 키면 desc 기본
+    if (sortKey === key) {
+        sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+        sortKey = key;
+        sortDir = (key === 'title') ? 'asc' : 'desc';
+    }
+    applySort();
+    renderRanking();
+    updateSortArrows();
+}
+
+function applySort() {
+    allStats.sort((a, b) => {
+        let av = a[sortKey], bv = b[sortKey];
+        if (sortKey === 'title') {
+            av = av || ''; bv = bv || '';
+            return sortDir === 'asc' ? av.localeCompare(bv, 'ko') : bv.localeCompare(av, 'ko');
+        }
+        return sortDir === 'asc' ? av - bv : bv - av;
+    });
+}
+
+function updateSortArrows() {
+    const keys = ['title', 'prevViews', 'curViews', 'delta', 'growth'];
+    keys.forEach(k => {
+        const el = document.getElementById('arr-' + k);
+        if (!el) return;
+        const btn = el.parentElement;
+        if (k === sortKey) {
+            el.textContent = sortDir === 'desc' ? '▼' : '▲';
+            btn.classList.add('active');
+        } else {
+            el.textContent = '';
+            btn.classList.remove('active');
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════════
+   18. 탭 전환 (그래프 ↔ 일별 데이터)
 ══════════════════════════════════════════════════ */
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach((btn, i) => {
