@@ -527,7 +527,7 @@
 /* ══════════════════════════════════════════════════
    1. 상수 & 전역 변수
 ══════════════════════════════════════════════════ */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxfTUhG5Kj2NEHgWuNpYS182GLogwoZpRf5MmOg3AkDiMT1MMSBqO6hXmKoIDWOE01O3w/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzRCCtKPWzmzmO8ydXVBLRqsPKBjK3zMmx7gO_su7vh7XAcJaUI-VuP7HdQ4jj3Pe9cFw/exec';
 
 let rawData      = [];       // 전체 원본 데이터
 let allStats     = [];       // 현재 날짜 기준 계산된 전체 랭킹
@@ -577,30 +577,32 @@ async function fetchData() {
         }
 
         // 컬럼명 확인 및 정규화
-        // GAS 응답의 실제 키 목록을 콘솔에 출력
         if (rawData.length > 0) {
             console.log('[컬럼 목록]', Object.keys(rawData[0]));
             console.log('[첫번째 행]', rawData[0]);
         }
 
-        // 조회수 숫자 정규화 (쉼표 포함 문자열 → 숫자)
+        // GAS에서 이미 올바른 타입으로 변환되어 오므로 최소한의 정규화만 수행
         rawData = rawData.map(item => {
-            // 날짜 필드: '날짜' 없으면 다른 후보 탐색
-            const dateVal = item['날짜'] || item['date'] || item['Date'] || '';
-            // 조회수 필드: '조회수' 없으면 다른 후보 탐색
-            const viewVal = item['조회수'] || item['views'] || item['조회'] || 0;
-            // 소설번호 필드
-            const idVal   = item['소설번호'] || item['id'] || item['소설 번호'] || '';
-            // 제목 필드
-            const titleVal = item['제목'] || item['title'] || '';
             return {
                 ...item,
-                날짜:    dateVal,
-                조회수:  Number(String(viewVal).replace(/,/g, '')) || 0,
-                소설번호: String(idVal),
-                제목:    titleVal
+                // 조회수: 숫자가 아닌 값(빈문자열 등) 대비 Number 처리
+                조회수:   typeof item['조회수'] === 'number'
+                            ? item['조회수']
+                            : Number(String(item['조회수'] || '0').replace(/,/g, '')) || 0,
+                // 소설번호: 숫자로 올 수 있으므로 문자열로
+                소설번호: String(item['소설번호'] || '').trim(),
+                // 날짜: 이미 YYYY-MM-DD 문자열
+                날짜:     String(item['날짜'] || '').trim(),
+                // 플러스일자: 이미 YYYY-MM-DD 문자열 (없으면 빈문자열)
+                플러스일자: String(item['플러스일자'] || '').trim(),
             };
         });
+
+        // 디버그: 첫 행 출력
+        if (rawData.length > 0) {
+            console.log('[정규화 후 첫행]', JSON.stringify(rawData[0]));
+        }
 
         // 첫 번째 row를 콘솔에 출력 → 이미지 필드명 확인용
         const sampleKeys = Object.keys(rawData[0]);
