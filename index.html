@@ -107,34 +107,33 @@
         .summary-card.c-rose  .s-value { color: var(--accent-rose); }
 
         /* ══════════════════════════════════════
-           6. 날짜 선택 + 뷰 탭 컨트롤
+           6. 기간 선택 컨트롤
         ══════════════════════════════════════ */
         .controls-row {
-            display: flex; align-items: center; gap: 16px;
+            display: flex; align-items: center; gap: 12px;
             margin-bottom: 20px; flex-wrap: wrap;
         }
-        .date-control { display: flex; align-items: center; gap: 10px; }
-        .date-control label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-        .date-select {
+        .date-control { display: flex; align-items: center; gap: 8px; }
+        .date-control label { font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
+        .date-input {
             background: var(--bg-card); border: 1px solid var(--border-bright);
             border-radius: var(--radius-sm); color: var(--text-primary);
-            font-family: var(--font-body); font-size: 13px; padding: 8px 14px;
-            cursor: pointer; min-width: 150px; transition: border-color var(--transition);
+            font-family: var(--font-body); font-size: 13px; padding: 7px 10px;
+            cursor: pointer; transition: border-color var(--transition);
+            color-scheme: dark;
         }
-        .date-select:focus { outline: none; border-color: var(--accent-teal); }
-        .date-select option { background: #1c2030; }
-
-        /* 뷰 탭 (제목 / 작품번호) */
-        .view-tabs { display: flex; gap: 4px; margin-left: auto; }
-        .view-tab {
-            padding: 7px 16px; font-size: 12px; font-weight: 500;
+        .date-input:focus { outline: none; border-color: var(--accent-teal); }
+        .range-sep { color: var(--text-dim); font-size: 15px; flex-shrink: 0; }
+        .preset-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+        .preset-btn {
+            padding: 6px 12px; font-size: 11px; font-weight: 500;
             border: 1px solid var(--border); border-radius: var(--radius-sm);
             background: transparent; color: var(--text-dim);
             font-family: var(--font-body); cursor: pointer;
-            transition: all var(--transition);
+            transition: all var(--transition); white-space: nowrap;
         }
-        .view-tab:hover  { border-color: var(--border-bright); color: var(--text-secondary); }
-        .view-tab.active { border-color: var(--accent-teal); color: var(--accent-teal); background: rgba(75,192,192,0.07); }
+        .preset-btn:hover  { border-color: var(--border-bright); color: var(--text-secondary); }
+        .preset-btn.active { border-color: var(--accent-teal); color: var(--accent-teal); background: rgba(75,192,192,0.07); }
 
         /* ══════════════════════════════════════
            7. 섹션 타이틀
@@ -604,11 +603,23 @@
         </div>
     </div>
 
-    <!-- ── 컨트롤 행 (날짜) ── -->
+    <!-- ── 컨트롤 행 (기간 선택) ── -->
     <div class="controls-row" id="controlsRow" style="display:none;">
         <div class="date-control">
-            <label for="dateSelect">📅 기준 날짜</label>
-            <select class="date-select" id="dateSelect" onchange="onDateChange()"></select>
+            <label>📅 시작일</label>
+            <input type="date" class="date-input" id="startDateInput" onchange="onRangeChange(true)">
+        </div>
+        <span class="range-sep">—</span>
+        <div class="date-control">
+            <label>종료일</label>
+            <input type="date" class="date-input" id="endDateInput" onchange="onRangeChange(true)">
+        </div>
+        <div class="preset-btns">
+            <button class="preset-btn active" id="pBtn-1"  onclick="setPreset(1)">전일</button>
+            <button class="preset-btn"        id="pBtn-7"  onclick="setPreset(7)">7일</button>
+            <button class="preset-btn"        id="pBtn-30" onclick="setPreset(30)">30일</button>
+            <button class="preset-btn"        id="pBtn-90" onclick="setPreset(90)">90일</button>
+            <button class="preset-btn"        id="pBtn-0"  onclick="setPreset(0)">전체</button>
         </div>
     </div>
 
@@ -710,12 +721,14 @@ const GROQ_MODEL   = 'llama-3.3-70b-versatile';        // 무료 모델
 
 let rawData      = [];       // 전체 원본 데이터
 let novelGroups  = null;     // 소설별 그룹 캐시 (fetchData 이후 1회만 생성)
-let allStats     = [];       // 현재 날짜 기준 계산된 전체 랭킹
+let allStats     = [];       // 현재 기간 기준 계산된 전체 랭킹
 let myChart      = null;     // Chart.js 인스턴스
 let activeId     = null;     // 현재 열린 상세 패널 소설번호
 let showAll      = false;    // 더보기 상태
 const PAGE_SIZE  = 10;       // 기본 표시 개수
 let aiFilterOn   = false;    // AI 필터 적용 여부
+let currentStart = '';       // 현재 선택 시작일
+let currentEnd   = '';       // 현재 선택 종료일
 
 // 정렬 상태: key = 정렬 컬럼, dir = 'desc'|'asc'
 let sortKey = 'growth';
@@ -813,88 +826,133 @@ async function fetchData() {
    - 요약 카드 / 랭킹 첫 렌더링
 ══════════════════════════════════════════════════ */
 function initDashboard() {
-    // 고유 날짜 목록 (오름차순)
     const allDates = [...new Set(rawData.map(d => normalizeDate(d.날짜)))]
         .filter(Boolean).sort();
+    const minDate = allDates[0];
+    const maxDate = allDates[allDates.length - 1];
 
-    // 날짜 셀렉트 (최신 날짜가 맨 위)
-    const select = document.getElementById('dateSelect');
-    select.innerHTML = '';
-    [...allDates].reverse().forEach(date => {
-        const opt = document.createElement('option');
-        opt.value = opt.textContent = date;
-        select.appendChild(opt);
+    // 날짜 입력 범위 설정
+    ['startDateInput','endDateInput'].forEach(id => {
+        const el = document.getElementById(id);
+        el.min = minDate; el.max = maxDate;
     });
 
     document.getElementById('summaryGrid').style.display = '';
     document.getElementById('controlsRow').style.display = '';
     document.getElementById('rankHeader').style.display  = '';
 
-    onDateChange();
+    setPreset(1); // 기본: 전일 비교
     updateSortArrows();
 }
 
+/* 프리셋 버튼 (전일/7일/30일/90일/전체) */
+function setPreset(days) {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(`pBtn-${days}`);
+    if (btn) btn.classList.add('active');
 
-/* ══════════════════════════════════════════════════
-   5. 날짜 변경 핸들러
-══════════════════════════════════════════════════ */
-function onDateChange() {
-    const sel = document.getElementById('dateSelect').value;
-    document.getElementById('rankTitle').textContent = `📊 ${sel} 기준 증감률 랭킹`;
+    const allDates = [...new Set(rawData.map(d => normalizeDate(d.날짜)))].filter(Boolean).sort();
+    const maxDate  = allDates[allDates.length - 1];
 
-    // 상세 패널 닫기
-    closeDetail();
+    let startDate;
+    if (days === 0) {
+        startDate = allDates[0];
+    } else {
+        const endD = new Date(maxDate);
+        endD.setDate(endD.getDate() - days);
+        const candidate = endD.toISOString().slice(0, 10);
+        // 데이터가 없는 날짜면 그 이후 첫 날짜로 대체
+        startDate = allDates.find(d => d >= candidate) || allDates[0];
+    }
 
-    // 전체 통계 계산 (요약 카드용)
-    calcSummary(sel);
-
-    // 전체 랭킹 계산 & 렌더
-    allStats = calcStats(sel);
-    showAll  = false;
-    applySort();
-    renderRanking();
+    document.getElementById('startDateInput').value = startDate;
+    document.getElementById('endDateInput').value   = maxDate;
+    currentStart = startDate;
+    currentEnd   = maxDate;
+    onRangeChange(false);
 }
 
 
 /* ══════════════════════════════════════════════════
-   6. 요약 카드 계산 & 렌더
-   선택 날짜(D-day)와 직전 날짜(D-1) 전체 조회수 합계 비교
+   5. 기간 변경 핸들러
 ══════════════════════════════════════════════════ */
-function calcSummary(selectedDate) {
-    // 캐시된 그룹 사용 (매 호출 시 9000행 재순회 방지)
+function onRangeChange(resetPreset) {
+    const start = document.getElementById('startDateInput').value;
+    const end   = document.getElementById('endDateInput').value;
+    if (!start || !end) return;
+
+    if (start > end) {
+        document.getElementById('startDateInput').value = end;
+        return;
+    }
+
+    if (resetPreset) {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    currentStart = start;
+    currentEnd   = end;
+
+    const daysDiff = Math.round((new Date(end) - new Date(start)) / 86400000);
+    const label = daysDiff <= 1
+        ? `📊 ${start} → ${end} (전일 대비)`
+        : `📊 ${start} ~ ${end} (${daysDiff}일간 변화)`;
+    document.getElementById('rankTitle').textContent = label;
+
+    closeDetail();
+    calcRangeSummary(start, end);
+
+    if (!aiFilterOn) {
+        allStats = calcRangeStats(start, end);
+        showAll  = false;
+        applySort();
+        renderRanking();
+    }
+}
+
+
+/* ══════════════════════════════════════════════════
+   6. 기간 기준 요약 카드
+══════════════════════════════════════════════════ */
+function calcRangeSummary(startDate, endDate) {
     const groups = novelGroups;
-    let totalDday = 0, totalDminus1 = 0;
-    let dminus1Date = '';
+    let totalEnd = 0, totalStart = 0;
+
+    // 날짜 이하 최근값 찾기
+    function nearestAt(list, date) {
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (normalizeDate(list[i].날짜) <= date) return list[i];
+        }
+        return null;
+    }
 
     for (const id in groups) {
-        const list   = groups[id];
-        const curIdx = list.findIndex(d => normalizeDate(d.날짜) === selectedDate);
-        if (curIdx < 0) continue;
-        totalDday += list[curIdx].조회수;
-        if (curIdx > 0) {
-            totalDminus1 += list[curIdx - 1].조회수;
-            dminus1Date   = normalizeDate(list[curIdx - 1].날짜);
-        }
+        const list = groups[id];
+        const endItem   = nearestAt(list, endDate);
+        const startItem = nearestAt(list, startDate);
+        if (endItem)   totalEnd   += endItem.조회수;
+        if (startItem) totalStart += startItem.조회수;
     }
 
     const totalNovels = Object.keys(groups).length;
-    const delta       = totalDday - totalDminus1;
-    const growthRate  = totalDminus1 === 0 ? 0
-        : parseFloat(((delta / totalDminus1) * 100).toFixed(2));
+    const delta       = totalEnd - totalStart;
+    const growthRate  = totalStart === 0 ? 0
+        : parseFloat(((delta / totalStart) * 100).toFixed(2));
     const dc = delta > 0 ? 'pos' : delta < 0 ? 'neg' : '';
     const dp = delta > 0 ? '+' : '';
+    const daysDiff = Math.round((new Date(endDate) - new Date(startDate)) / 86400000);
+    const periodLabel = daysDiff <= 1 ? '전일 대비' : `${daysDiff}일간`;
 
     document.getElementById('sumNovels').textContent    = totalNovels.toLocaleString();
-    document.getElementById('sumDminus1').textContent   = totalDminus1.toLocaleString();
-    document.getElementById('labelDminus1').textContent = dminus1Date ? `${dminus1Date} 총 조회수` : 'D-1 총 조회수';
-    document.getElementById('subDminus1').textContent   = '전일 합계';
-    document.getElementById('sumDday').textContent      = totalDday.toLocaleString();
-    document.getElementById('labelDday').textContent    = `${selectedDate} 총 조회수`;
-    document.getElementById('subDday').textContent      = '당일 합계';
+    document.getElementById('sumDminus1').textContent   = totalStart.toLocaleString();
+    document.getElementById('labelDminus1').textContent = `${startDate} 합계`;
+    document.getElementById('subDminus1').textContent   = '시작일 조회수';
+    document.getElementById('sumDday').textContent      = totalEnd.toLocaleString();
+    document.getElementById('labelDday').textContent    = `${endDate} 합계`;
+    document.getElementById('subDday').textContent      = '종료일 조회수';
     document.getElementById('sumDelta').textContent     = `${dp}${delta.toLocaleString()}`;
-    document.getElementById('subDelta').textContent     = `증감률 ${dp}${growthRate}%`;
+    document.getElementById('subDelta').textContent     = `${periodLabel} 증감률 ${dp}${growthRate}%`;
 
-    // 증감에 따라 카드 색상 변경
     const card = document.getElementById('cardDelta');
     card.className = 'summary-card ' + (delta > 0 ? 'c-green' : delta < 0 ? 'c-rose' : '');
     document.getElementById('sumDelta').className = 's-value ' + dc;
@@ -920,34 +978,47 @@ function groupByNovel() {
 
 
 /* ══════════════════════════════════════════════════
-   8. 특정 날짜 기준 전체 증감률 계산
-   증감률 = ((현재 - 이전) / 이전) × 100
-   변화량 = 현재 - 이전
+   8. 기간 기준 전체 증감 계산
+   시작일~종료일 조회수 비교
 ══════════════════════════════════════════════════ */
-function calcStats(selectedDate) {
-    const groups = novelGroups; // 캐시 사용
+function calcRangeStats(startDate, endDate) {
+    const groups = novelGroups;
     const stats  = [];
 
     for (const id in groups) {
-        const list   = groups[id];
-        const curIdx = list.findIndex(d => normalizeDate(d.날짜) === selectedDate);
-        if (curIdx <= 0) continue;
+        const list = groups[id];
 
-        const cur       = list[curIdx];
-        const prev      = list[curIdx - 1];
-        const curViews  = cur.조회수;
-        const prevViews = prev.조회수;
+        // 종료일 이하 최근값
+        let endItem = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (normalizeDate(list[i].날짜) <= endDate) { endItem = list[i]; break; }
+        }
+        if (!endItem) continue;
+
+        // 시작일 이하 최근값
+        let startItem = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (normalizeDate(list[i].날짜) <= startDate) { startItem = list[i]; break; }
+        }
+        if (!startItem) startItem = list[0];
+
+        // 시작=종료이면 직전 데이터와 비교 (전일 대비)
+        const endIdx = list.indexOf(endItem);
+        if (startItem === endItem) {
+            if (endIdx > 0) startItem = list[endIdx - 1];
+            else continue;
+        }
+
+        const curViews  = endItem.조회수;
+        const prevViews = startItem.조회수;
         const delta     = curViews - prevViews;
-        const growth    = prevViews === 0
-            ? 0
+        const growth    = prevViews === 0 ? 0
             : parseFloat(((delta / prevViews) * 100).toFixed(2));
 
-        // 이미지 URL 탐색 (여러 후보 키 순서대로 시도)
-        const imgUrl = getImageUrl(cur);
-
         stats.push({
-            id, title: cur.제목, growth, delta,
-            curViews, prevViews, imgUrl,
+            id, title: endItem.제목, growth, delta,
+            curViews, prevViews,
+            imgUrl: getImageUrl(endItem),
             history: list
         });
     }
@@ -1099,7 +1170,7 @@ function openDetail(novelId) {
         .sort((a, b) => new Date(normalizeDate(a.날짜)) - new Date(normalizeDate(b.날짜)));
     if (!history.length) return;
 
-    const selectedDate = document.getElementById('dateSelect').value;
+    const selectedDate = currentEnd; // 종료일 기준으로 그래프 강조
     const latestItem   = history[history.length - 1];
     const title        = latestItem.제목;
     const imgUrl       = getImageUrl(latestItem);
@@ -1548,6 +1619,12 @@ N일간 조회수 증가량 랭킹:
 제목에 특정 키워드 포함된 소설만 필터:
 {"action":"filter_keyword","keyword":"로판","message":"한국어 설명"}
 
+특정 소설 제목으로 상세 조회 (일별 그래프 표시):
+{"action":"show_novel_detail","keyword":"일진녀","message":"한국어 설명"}
+
+특정 날짜/기간으로 변경 (date는 YYYY-MM-DD):
+{"action":"date_ranking","date":"2026-03-03","sortBy":"growth","message":"한국어 설명"}
+
 단순 답변 (화면 변경 없음):
 {"action":"answer","message":"한국어 답변"}
 
@@ -1615,26 +1692,25 @@ function executeAiAction(action) {
             break;
         }
         case 'date_ranking': {
-            const date   = action.date || getLatestDate();
-            const select = document.getElementById('dateSelect');
-            const opt    = select.querySelector(`option[value="${date}"]`);
-            if (opt) { select.value = date; }
-            const by = { growth: 'growth', delta: 'delta', curViews: 'curViews' }[action.sortBy] || 'growth';
-            allStats = calcStats(select.value);
-            sortKey  = by; sortDir = 'desc';
-            applySort();
-            applyAiFilter(`🤖 ${select.value} 기준 ${by === 'growth' ? '증감률' : by === 'delta' ? '변화량' : '조회수'} 순`);
-            renderRanking();
+            // 특정 날짜 또는 기간으로 이동
+            const endDate   = action.date || action.endDate || currentEnd;
+            const startDate = action.startDate || endDate; // 날짜 하나면 전일 비교
+            document.getElementById('startDateInput').value = startDate;
+            document.getElementById('endDateInput').value   = endDate;
+            const by = { growth:'growth', delta:'delta', curViews:'curViews' }[action.sortBy] || 'growth';
+            sortKey = by; sortDir = 'desc';
+            applyAiFilter(`🤖 ${startDate} ~ ${endDate} ${by === 'growth' ? '증감률' : by === 'delta' ? '변화량' : '조회수'} 순`);
+            onRangeChange(true);
             updateSortArrows();
-            addAiMsg('ai', tag('화면변경') + (action.message || `${select.value} 기준 랭킹`));
+            addAiMsg('ai', tag('화면변경') + (action.message || `${endDate} 기준 랭킹`));
             break;
         }
         case 'top_views': {
             const limit = Number(action.limit) || 10;
-            allStats = calcStats(getLatestDate());
+            allStats = calcRangeStats(currentStart, currentEnd);
             sortKey  = 'curViews'; sortDir = 'desc';
             applySort();
-            applyAiFilter(`🤖 최신 날짜 기준 조회수 Top ${limit}`);
+            applyAiFilter(`🤖 현재 기간 기준 조회수 Top ${limit}`);
             renderRanking();
             updateSortArrows();
             addAiMsg('ai', tag('화면변경') + (action.message || `최신 조회수 Top ${limit}`));
@@ -1642,10 +1718,9 @@ function executeAiAction(action) {
         }
         case 'declining': {
             const limit = Number(action.limit) || 10;
-            const date  = getLatestDate();
-            allStats = calcStats(date);
-            allStats.sort((a, b) => a.delta - b.delta); // 하락 순
-            applyAiFilter(`🤖 ${date} 기준 하락 Top ${limit}`);
+            allStats = calcRangeStats(currentStart, currentEnd);
+            allStats.sort((a, b) => a.delta - b.delta);
+            applyAiFilter(`🤖 현재 기간 기준 하락 Top ${limit}`);
             renderRanking();
             addAiMsg('ai', tag('화면변경') + (action.message || `하락 Top ${limit}`));
             break;
@@ -1653,8 +1728,7 @@ function executeAiAction(action) {
         case 'filter_keyword': {
             const kw = action.keyword || '';
             if (!kw) { addAiMsg('ai', '검색할 키워드를 인식하지 못했습니다.'); break; }
-            // 현재 날짜 기준 전체 stats에서 제목에 키워드 포함된 것만 필터
-            const base = calcStats(getLatestDate());
+            const base     = calcRangeStats(currentStart, currentEnd);
             const filtered = base.filter(s => s.title && s.title.includes(kw));
             if (filtered.length === 0) {
                 addAiMsg('ai', `"${kw}"이(가) 포함된 소설이 없습니다.`);
@@ -1665,6 +1739,28 @@ function executeAiAction(action) {
             applyAiFilter(`🤖 제목에 "${kw}" 포함된 소설 ${filtered.length}개`);
             renderRanking();
             addAiMsg('ai', tag('화면변경') + (action.message || `"${kw}" 포함 소설 ${filtered.length}개 표시`));
+            break;
+        }
+        case 'show_novel_detail': {
+            // 제목 키워드로 소설 찾아서 상세 패널 열기
+            const keyword = action.keyword || action.title || '';
+            if (!keyword) { addAiMsg('ai', '소설 제목을 인식하지 못했습니다.'); break; }
+            const found = rawData.find(d => d.제목 && d.제목.includes(keyword));
+            if (!found) {
+                addAiMsg('ai', `"${keyword}"과(와) 일치하는 소설을 찾지 못했습니다.`);
+                break;
+            }
+            const novelId = String(found.소설번호);
+            // allStats에 없으면 전체 통계에서 찾아 추가
+            if (!allStats.find(s => s.id === novelId)) {
+                const full = calcRangeStats(currentStart, currentEnd);
+                allStats = full;
+                showAll  = true;
+                applySort();
+                renderRanking();
+            }
+            openDetail(novelId);
+            addAiMsg('ai', tag('화면변경') + (action.message || `"${found.제목}" 상세 정보를 표시합니다.`));
             break;
         }
         case 'answer':
@@ -1686,13 +1782,12 @@ function applyAiFilter(msg) {
 function resetAiFilter() {
     aiFilterOn = false;
     document.getElementById('aiFilterBar').classList.remove('on');
-    onDateChange(); // 원래 날짜 기준 랭킹 복원
+    onRangeChange(false); // 현재 기간 기준으로 복원
 }
 
-// 최신 날짜 반환
+// 종료일 반환
 function getLatestDate() {
-    const sel = document.getElementById('dateSelect');
-    return sel ? sel.options[0]?.value : '';
+    return currentEnd || document.getElementById('endDateInput')?.value || '';
 }
 
 // N일간 누적 증가량 계산 (소설별)
