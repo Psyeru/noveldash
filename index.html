@@ -554,14 +554,14 @@
             <div class="s-sub">전체 등록 작품</div>
         </div>
         <div class="summary-card">
-            <div class="s-label" id="labelDminus1">D-1 총 조회수</div>
+            <div class="s-label" id="labelDminus1">시작일 조회수</div>
             <div class="s-value" id="sumDminus1">—</div>
-            <div class="s-sub" id="subDminus1">전일 합계</div>
+            <div class="s-sub" id="subDminus1">시작일 합계</div>
         </div>
         <div class="summary-card c-teal">
-            <div class="s-label" id="labelDday">D-day 총 조회수</div>
+            <div class="s-label" id="labelDday">종료일 조회수</div>
             <div class="s-value" id="sumDday">—</div>
-            <div class="s-sub" id="subDday">당일 합계</div>
+            <div class="s-sub" id="subDday">종료일 합계</div>
         </div>
         <div class="summary-card" id="cardDelta">
             <div class="s-label">증감수 (증감률)</div>
@@ -645,12 +645,12 @@
         <div class="rh-stats">
             <div class="rh-stat">
                 <button class="sort-btn" onclick="setSort('prevViews')">
-                    전일<span class="sort-arrow" id="arr-prevViews"></span>
+                    <span id="rhLabelStart">시작일</span><span class="sort-arrow" id="arr-prevViews"></span>
                 </button>
             </div>
             <div class="rh-stat">
                 <button class="sort-btn" onclick="setSort('curViews')">
-                    당일<span class="sort-arrow" id="arr-curViews"></span>
+                    <span id="rhLabelEnd">종료일</span><span class="sort-arrow" id="arr-curViews"></span>
                 </button>
             </div>
             <div class="rh-stat">
@@ -893,6 +893,14 @@ function onRangeChange(resetPreset) {
     currentStart = start;
     currentEnd   = end;
 
+    // 헤더 정렬 버튼 레이블을 실제 날짜로 업데이트
+    const startShort = start.slice(5); // MM-DD
+    const endShort   = end.slice(5);
+    const rhS = document.getElementById('rhLabelStart');
+    const rhE = document.getElementById('rhLabelEnd');
+    if (rhS) rhS.textContent = startShort;
+    if (rhE) rhE.textContent = endShort;
+
     const daysDiff = Math.round((new Date(end) - new Date(start)) / 86400000);
     const label = daysDiff <= 1
         ? `📊 ${start} → ${end} (전일 대비)`
@@ -945,11 +953,11 @@ function calcRangeSummary(startDate, endDate) {
 
     document.getElementById('sumNovels').textContent    = totalNovels.toLocaleString();
     document.getElementById('sumDminus1').textContent   = totalStart.toLocaleString();
-    document.getElementById('labelDminus1').textContent = `${startDate} 합계`;
-    document.getElementById('subDminus1').textContent   = '시작일 조회수';
+    document.getElementById('labelDminus1').textContent = `시작일 (${startDate})`;
+    document.getElementById('subDminus1').textContent   = '시작일 조회수 합계';
     document.getElementById('sumDday').textContent      = totalEnd.toLocaleString();
-    document.getElementById('labelDday').textContent    = `${endDate} 합계`;
-    document.getElementById('subDday').textContent      = '종료일 조회수';
+    document.getElementById('labelDday').textContent    = `종료일 (${endDate})`;
+    document.getElementById('subDday').textContent      = '종료일 조회수 합계';
     document.getElementById('sumDelta').textContent     = `${dp}${delta.toLocaleString()}`;
     document.getElementById('subDelta').textContent     = `${periodLabel} 증감률 ${dp}${growthRate}%`;
 
@@ -1096,11 +1104,11 @@ function renderRanking() {
             <div class="rank-info">${infoHtml}</div>
             <div class="rank-stats">
                 <div class="rank-stat">
-                    <div class="rs-label">전일</div>
+                    <div class="rs-label">${currentStart.slice(5)}</div>
                     <div class="rs-val">${item.prevViews.toLocaleString()}</div>
                 </div>
                 <div class="rank-stat">
-                    <div class="rs-label">당일</div>
+                    <div class="rs-label">${currentEnd.slice(5)}</div>
                     <div class="rs-val">${item.curViews.toLocaleString()}</div>
                 </div>
                 <div class="rank-stat">
