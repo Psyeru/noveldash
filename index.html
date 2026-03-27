@@ -391,6 +391,144 @@
             .mini-bar { display: none; }
             .rank-stats { gap: 10px; }
         }
+
+        /* ══════════════════════════════════════
+           12. AI 분석 패널
+        ══════════════════════════════════════ */
+        .ai-panel {
+            background: var(--bg-card);
+            border: 1px solid rgba(124,58,237,0.3);
+            border-radius: var(--radius-lg);
+            margin-bottom: 28px; overflow: hidden;
+        }
+        .ai-panel-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 20px;
+            background: rgba(124,58,237,0.06);
+            border-bottom: 1px solid rgba(124,58,237,0.15);
+            cursor: pointer; user-select: none;
+        }
+        .ai-panel-header .ai-title { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
+        .ai-panel-header .ai-badge {
+            font-size: 10px; padding: 2px 8px;
+            background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3);
+            border-radius: 4px; color: #a78bfa; letter-spacing: 0.05em;
+        }
+        .ai-panel-header .ai-toggle { font-size: 11px; color: var(--text-dim); transition: transform var(--transition); }
+        .ai-panel-header .ai-toggle.open { transform: rotate(180deg); }
+
+        .ai-panel-body { padding: 16px 20px 20px; }
+
+        /* API 키 설정 바 */
+        .ai-key-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; margin-bottom: 14px;
+            background: rgba(201,168,76,0.05);
+            border: 1px solid rgba(201,168,76,0.18); border-radius: var(--radius-sm);
+            font-size: 12px;
+        }
+        .ai-key-row.ok { background: rgba(74,222,128,0.04); border-color: rgba(74,222,128,0.18); }
+        .ai-key-row label { color: var(--text-dim); flex-shrink: 0; }
+        .ai-key-input {
+            flex: 1; background: var(--bg-base); border: 1px solid var(--border-bright);
+            border-radius: 5px; color: var(--text-primary);
+            font-family: var(--font-body); font-size: 12px; padding: 6px 10px;
+        }
+        .ai-key-input:focus { outline: none; border-color: #7c3aed; }
+        .ai-key-btn {
+            padding: 6px 12px; background: rgba(124,58,237,0.12);
+            border: 1px solid rgba(124,58,237,0.3); border-radius: 5px;
+            color: #a78bfa; font-family: var(--font-body); font-size: 12px;
+            cursor: pointer; transition: all var(--transition); white-space: nowrap;
+        }
+        .ai-key-btn:hover { background: rgba(124,58,237,0.22); }
+        .ai-key-status { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+        .ai-key-status.ok { color: var(--accent-green); }
+
+        /* 빠른 질문 버튼 */
+        .ai-suggests { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .ai-sug {
+            padding: 5px 12px; font-size: 11px;
+            background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.2);
+            border-radius: 20px; color: #c4b5fd; font-family: var(--font-body);
+            cursor: pointer; transition: all var(--transition);
+        }
+        .ai-sug:hover { background: rgba(124,58,237,0.17); border-color: rgba(124,58,237,0.4); }
+
+        /* 채팅 영역 */
+        .ai-chat-area {
+            display: flex; flex-direction: column; gap: 7px;
+            max-height: 180px; overflow-y: auto;
+            margin-bottom: 12px;
+            scrollbar-width: thin; scrollbar-color: var(--border-bright) transparent;
+        }
+        .ai-chat-area:empty { display: none; }
+        .ai-msg {
+            padding: 9px 13px; border-radius: var(--radius-sm);
+            font-size: 12.5px; line-height: 1.55;
+        }
+        .ai-msg.user {
+            background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);
+            color: #c4b5fd; align-self: flex-end; max-width: 85%;
+        }
+        .ai-msg.ai {
+            background: rgba(75,192,192,0.06); border: 1px solid rgba(75,192,192,0.14);
+            color: var(--text-secondary);
+        }
+        .ai-msg.err {
+            background: rgba(224,92,122,0.07); border: 1px solid rgba(224,92,122,0.2);
+            color: var(--accent-rose);
+        }
+        .ai-msg .tag {
+            display: inline-block; font-size: 10px; font-weight: 600;
+            padding: 1px 7px; border-radius: 3px;
+            background: rgba(75,192,192,0.14); color: var(--accent-teal);
+            margin-right: 6px; vertical-align: middle; letter-spacing: 0.04em;
+        }
+        .dot-flashing {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-teal); animation: dotFlash 1s infinite;
+            box-shadow: 12px 0 0 var(--accent-teal), 24px 0 0 var(--accent-teal);
+        }
+        @keyframes dotFlash {
+            0%, 80%, 100% { opacity: 1; }
+            40% { opacity: 0.2; }
+        }
+
+        /* 입력창 */
+        .ai-input-row { display: flex; gap: 8px; }
+        .ai-q-input {
+            flex: 1; background: var(--bg-base); border: 1px solid var(--border-bright);
+            border-radius: var(--radius-sm); color: var(--text-primary);
+            font-family: var(--font-body); font-size: 13px; padding: 9px 14px;
+            transition: border-color var(--transition);
+        }
+        .ai-q-input:focus { outline: none; border-color: #7c3aed; }
+        .ai-q-input::placeholder { color: var(--text-dim); }
+        .ai-send {
+            padding: 9px 20px; background: #7c3aed; border: none;
+            border-radius: var(--radius-sm); color: white;
+            font-family: var(--font-body); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: background var(--transition); white-space: nowrap;
+        }
+        .ai-send:hover { background: #6d28d9; }
+        .ai-send:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+
+        /* AI 필터 적용 배너 */
+        .ai-filter-bar {
+            display: none; align-items: center; gap: 10px;
+            padding: 9px 16px; margin-bottom: 10px;
+            background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.2);
+            border-radius: var(--radius-sm); font-size: 12px; color: #c4b5fd;
+        }
+        .ai-filter-bar.on { display: flex; }
+        .ai-filter-bar span { flex: 1; }
+        .ai-filter-reset {
+            padding: 3px 10px; background: none; border: 1px solid rgba(124,58,237,0.35);
+            border-radius: 4px; color: #a78bfa; font-size: 11px; font-family: var(--font-body);
+            cursor: pointer; transition: all var(--transition);
+        }
+        .ai-filter-reset:hover { background: rgba(124,58,237,0.15); }
     </style>
 </head>
 <body>
@@ -433,12 +571,53 @@
         </div>
     </div>
 
+    <!-- ── AI 분석 패널 ── -->
+    <div class="ai-panel" id="aiPanel">
+        <div class="ai-panel-header" onclick="toggleAiPanel()">
+            <span style="font-size:18px;">🤖</span>
+            <span class="ai-title">AI 데이터 분석</span>
+            <span class="ai-badge">Claude</span>
+            <span class="ai-toggle open" id="aiToggleIcon">▲</span>
+        </div>
+        <div class="ai-panel-body" id="aiPanelBody">
+            <!-- API 키 -->
+            <div class="ai-key-row" id="aiKeyRow">
+                <label>🔑 API Key</label>
+                <input type="password" class="ai-key-input" id="aiKeyInput" placeholder="sk-ant-api03-...">
+                <button class="ai-key-btn" onclick="saveAiKey()">저장</button>
+                <span class="ai-key-status" id="aiKeyStatus">미설정</span>
+            </div>
+            <!-- 대화 기록 -->
+            <div class="ai-chat-area" id="aiChatArea"></div>
+            <!-- 빠른 질문 -->
+            <div class="ai-suggests">
+                <button class="ai-sug" onclick="quickAiQuery('최근 7일 동안 조회수가 가장 많이 늘어난 소설 10개 보여줘')">📈 7일 급상승 Top10</button>
+                <button class="ai-sug" onclick="quickAiQuery('현재 조회수가 가장 높은 소설 10개 보여줘')">👑 조회수 최상위 10</button>
+                <button class="ai-sug" onclick="quickAiQuery('최근 30일 동안 조회수 증가량이 가장 많은 소설 보여줘')">🚀 30일 성장 Top10</button>
+                <button class="ai-sug" onclick="quickAiQuery('어제 대비 오늘 조회수가 가장 많이 떨어진 소설 보여줘')">📉 하락 Top10</button>
+            </div>
+            <!-- 입력창 -->
+            <div class="ai-input-row">
+                <input type="text" class="ai-q-input" id="aiQueryInput"
+                       placeholder="예: 7일 동안 조회수가 가장 많이 늘어난 소설 보여줘"
+                       onkeydown="if(event.key==='Enter') sendAiQuery()">
+                <button class="ai-send" id="aiSendBtn" onclick="sendAiQuery()">전송</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ── 컨트롤 행 (날짜) ── -->
     <div class="controls-row" id="controlsRow" style="display:none;">
         <div class="date-control">
             <label for="dateSelect">📅 기준 날짜</label>
             <select class="date-select" id="dateSelect" onchange="onDateChange()"></select>
         </div>
+    </div>
+
+    <!-- ── AI 필터 적용 중 배너 ── -->
+    <div class="ai-filter-bar" id="aiFilterBar">
+        <span id="aiFilterMsg">🤖 AI 필터 적용 중</span>
+        <button class="ai-filter-reset" onclick="resetAiFilter()">원래대로 ✕</button>
     </div>
 
     <!-- ── 랭킹 섹션 ── -->
@@ -530,11 +709,13 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbzRCCtKPWzmzmO8ydXVBLRqsPKBjK3zMmx7gO_su7vh7XAcJaUI-VuP7HdQ4jj3Pe9cFw/exec';
 
 let rawData      = [];       // 전체 원본 데이터
+let novelGroups  = null;     // 소설별 그룹 캐시 (fetchData 이후 1회만 생성)
 let allStats     = [];       // 현재 날짜 기준 계산된 전체 랭킹
 let myChart      = null;     // Chart.js 인스턴스
 let activeId     = null;     // 현재 열린 상세 패널 소설번호
 let showAll      = false;    // 더보기 상태
 const PAGE_SIZE  = 10;       // 기본 표시 개수
+let aiFilterOn   = false;    // AI 필터 적용 여부
 
 // 정렬 상태: key = 정렬 컬럼, dir = 'desc'|'asc'
 let sortKey = 'growth';
@@ -612,7 +793,11 @@ async function fetchData() {
         const foundImgKey = sampleKeys.find(k => String(rawData[0][k]||'').startsWith('http'));
         console.log('[이미지 필드]', foundImgKey ? `"${foundImgKey}" = ${rawData[0][foundImgKey]}` : '없음 — 시트에 이미지 컬럼이 없거나 필드명이 다릅니다');
 
+        // 그룹 캐시 1회 생성 (날짜 변경 때마다 재계산 방지)
+        novelGroups = groupByNovel();
+
         setStatus('success', `✓ 데이터 로드 완료 — 총 ${rawData.length}건`);
+        loadAiKey();
         initDashboard();
 
     } catch (err) {
@@ -676,8 +861,8 @@ function onDateChange() {
    선택 날짜(D-day)와 직전 날짜(D-1) 전체 조회수 합계 비교
 ══════════════════════════════════════════════════ */
 function calcSummary(selectedDate) {
-    // 소설별 그룹화 후 각 소설에서 D-day / D-1 날짜 찾기
-    const groups = groupByNovel();
+    // 캐시된 그룹 사용 (매 호출 시 9000행 재순회 방지)
+    const groups = novelGroups;
     let totalDday = 0, totalDminus1 = 0;
     let dminus1Date = '';
 
@@ -740,7 +925,7 @@ function groupByNovel() {
    변화량 = 현재 - 이전
 ══════════════════════════════════════════════════ */
 function calcStats(selectedDate) {
-    const groups = groupByNovel();
+    const groups = novelGroups; // 캐시 사용
     const stats  = [];
 
     for (const id in groups) {
@@ -1263,7 +1448,281 @@ function normalizeDate(raw) {
 
 
 /* ══════════════════════════════════════════════════
-   19. 초기 실행
+   19. AI 분석 패널
+══════════════════════════════════════════════════ */
+
+// 패널 접기/펼치기
+function toggleAiPanel() {
+    const body   = document.getElementById('aiPanelBody');
+    const toggle = document.getElementById('aiToggleIcon');
+    const isOpen = body.style.display !== 'none';
+    body.style.display   = isOpen ? 'none' : '';
+    toggle.textContent   = isOpen ? '▼' : '▲';
+    toggle.classList.toggle('open', !isOpen);
+}
+
+// API 키 로드 (localStorage)
+function loadAiKey() {
+    const saved = localStorage.getItem('novelpia_claude_key');
+    if (!saved) return;
+    document.getElementById('aiKeyInput').value = '••••••••';
+    document.getElementById('aiKeyStatus').textContent = '✓ 설정됨';
+    document.getElementById('aiKeyStatus').classList.add('ok');
+    document.getElementById('aiKeyRow').classList.add('ok');
+}
+
+// API 키 저장
+function saveAiKey() {
+    const val = document.getElementById('aiKeyInput').value.trim();
+    if (!val || val.startsWith('•')) return;
+    if (!val.startsWith('sk-')) {
+        alert('Claude API 키는 sk- 로 시작해야 합니다.');
+        return;
+    }
+    localStorage.setItem('novelpia_claude_key', val);
+    document.getElementById('aiKeyInput').value = '••••••••';
+    document.getElementById('aiKeyStatus').textContent = '✓ 저장됨';
+    document.getElementById('aiKeyStatus').classList.add('ok');
+    document.getElementById('aiKeyRow').classList.add('ok');
+}
+
+function getAiKey() {
+    return localStorage.getItem('novelpia_claude_key');
+}
+
+// 빠른 질문 버튼
+function quickAiQuery(text) {
+    document.getElementById('aiQueryInput').value = text;
+    sendAiQuery();
+}
+
+// 채팅 메시지 추가
+function addAiMsg(role, html) {
+    const area = document.getElementById('aiChatArea');
+    const div  = document.createElement('div');
+    div.className = 'ai-msg ' + role;
+    div.innerHTML = html;
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
+    return div;
+}
+
+// AI 질문 전송
+async function sendAiQuery() {
+    const input = document.getElementById('aiQueryInput');
+    const query = input.value.trim();
+    if (!query) return;
+
+    const key = getAiKey();
+    if (!key) {
+        addAiMsg('err', '🔑 먼저 Claude API Key를 입력하고 저장해주세요.');
+        return;
+    }
+    if (!novelGroups) {
+        addAiMsg('err', '⏳ 데이터 로딩 후 사용하세요.');
+        return;
+    }
+
+    // 사용자 메시지 표시
+    addAiMsg('user', query);
+    input.value = '';
+
+    // 로딩 메시지
+    const loadEl = addAiMsg('ai', '<span class="dot-flashing"></span>');
+    document.getElementById('aiSendBtn').disabled = true;
+
+    // 데이터 컨텍스트 구성
+    const dates      = [...new Set(rawData.map(d => normalizeDate(d.날짜)))].filter(Boolean).sort();
+    const novelCount = Object.keys(novelGroups).length;
+    const latestDate = dates[dates.length - 1];
+    const oldestDate = dates[0];
+
+    const systemPrompt = `당신은 소설 통계 대시보드의 데이터 분석 AI입니다.
+현재 데이터: 소설 ${novelCount}개, 기간 ${oldestDate} ~ ${latestDate} (최신: ${latestDate})
+데이터 컬럼: 소설번호, 제목, 날짜(YYYY-MM-DD), 조회수(누적)
+
+사용자 질문에 맞는 액션 JSON 하나만 반환하세요 (JSON만, 다른 텍스트 없이):
+
+N일간 조회수 증가량 랭킹:
+{"action":"multi_day_growth","days":7,"limit":10,"sortBy":"delta","message":"한국어 설명"}
+(sortBy: delta=증가량순 / growth=증감률순)
+
+특정 날짜 기준 랭킹:
+{"action":"date_ranking","date":"YYYY-MM-DD","sortBy":"growth","limit":10,"message":"한국어 설명"}
+(sortBy: growth=증감률 / delta=변화량 / curViews=당일조회수)
+
+최신 조회수 Top N:
+{"action":"top_views","limit":10,"message":"한국어 설명"}
+
+하락 Top N (최신 날짜 기준):
+{"action":"declining","limit":10,"message":"한국어 설명"}
+
+단순 답변 (화면 변경 없음):
+{"action":"answer","message":"한국어 답변"}
+
+message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명하세요.`;
+
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 300,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: query }]
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error?.message || `HTTP ${res.status}`);
+        }
+
+        const data   = await res.json();
+        const rawText = data.content[0].text.trim();
+
+        // JSON 파싱 (마크다운 코드블록 제거)
+        const jsonStr = rawText.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+        const action  = JSON.parse(jsonStr);
+
+        loadEl.remove();
+        executeAiAction(action);
+
+    } catch (err) {
+        loadEl.innerHTML = `오류: ${err.message}`;
+        loadEl.classList.add('err');
+        loadEl.classList.remove('ai');
+    } finally {
+        document.getElementById('aiSendBtn').disabled = false;
+    }
+}
+
+// AI 액션 실행
+function executeAiAction(action) {
+    const tag = (label) => `<span class="tag">${label}</span>`;
+
+    switch (action.action) {
+        case 'multi_day_growth': {
+            const days  = Number(action.days)  || 7;
+            const limit = Number(action.limit) || 10;
+            const by    = action.sortBy === 'growth' ? 'growth' : 'delta';
+            const stats = calcMultiDayStats(days);
+            stats.sort((a, b) => b[by] - a[by]);
+            allStats   = stats;
+            showAll    = limit >= stats.length;
+            applyAiFilter(`🤖 최근 ${days}일 ${by === 'growth' ? '증감률' : '증가량'} 기준 Top ${limit}`);
+            renderRanking();
+            addAiMsg('ai', tag('화면변경') + (action.message || `최근 ${days}일 조회수 증가 Top ${limit}`));
+            break;
+        }
+        case 'date_ranking': {
+            const date   = action.date || getLatestDate();
+            const select = document.getElementById('dateSelect');
+            const opt    = select.querySelector(`option[value="${date}"]`);
+            if (opt) { select.value = date; }
+            const by = { growth: 'growth', delta: 'delta', curViews: 'curViews' }[action.sortBy] || 'growth';
+            allStats = calcStats(select.value);
+            sortKey  = by; sortDir = 'desc';
+            applySort();
+            applyAiFilter(`🤖 ${select.value} 기준 ${by === 'growth' ? '증감률' : by === 'delta' ? '변화량' : '조회수'} 순`);
+            renderRanking();
+            updateSortArrows();
+            addAiMsg('ai', tag('화면변경') + (action.message || `${select.value} 기준 랭킹`));
+            break;
+        }
+        case 'top_views': {
+            const limit = Number(action.limit) || 10;
+            allStats = calcStats(getLatestDate());
+            sortKey  = 'curViews'; sortDir = 'desc';
+            applySort();
+            applyAiFilter(`🤖 최신 날짜 기준 조회수 Top ${limit}`);
+            renderRanking();
+            updateSortArrows();
+            addAiMsg('ai', tag('화면변경') + (action.message || `최신 조회수 Top ${limit}`));
+            break;
+        }
+        case 'declining': {
+            const limit = Number(action.limit) || 10;
+            const date  = getLatestDate();
+            allStats = calcStats(date);
+            allStats.sort((a, b) => a.delta - b.delta); // 하락 순
+            applyAiFilter(`🤖 ${date} 기준 하락 Top ${limit}`);
+            renderRanking();
+            addAiMsg('ai', tag('화면변경') + (action.message || `하락 Top ${limit}`));
+            break;
+        }
+        case 'answer':
+        default:
+            addAiMsg('ai', action.message || '분석 결과를 찾지 못했습니다.');
+            break;
+    }
+}
+
+// AI 필터 배너 표시
+function applyAiFilter(msg) {
+    aiFilterOn = true;
+    const bar = document.getElementById('aiFilterBar');
+    bar.classList.add('on');
+    document.getElementById('aiFilterMsg').textContent = msg;
+}
+
+// AI 필터 초기화
+function resetAiFilter() {
+    aiFilterOn = false;
+    document.getElementById('aiFilterBar').classList.remove('on');
+    onDateChange(); // 원래 날짜 기준 랭킹 복원
+}
+
+// 최신 날짜 반환
+function getLatestDate() {
+    const sel = document.getElementById('dateSelect');
+    return sel ? sel.options[0]?.value : '';
+}
+
+// N일간 누적 증가량 계산 (소설별)
+function calcMultiDayStats(days) {
+    const stats = [];
+    for (const id in novelGroups) {
+        const list = novelGroups[id];
+        if (list.length < 2) continue;
+
+        const latest     = list[list.length - 1];
+        const latestDate = new Date(normalizeDate(latest.날짜));
+        const targetDate = new Date(latestDate);
+        targetDate.setDate(targetDate.getDate() - days);
+
+        // targetDate 이전 가장 가까운 데이터 찾기
+        let base = list[0];
+        for (let i = list.length - 2; i >= 0; i--) {
+            if (new Date(normalizeDate(list[i].날짜)) <= targetDate) {
+                base = list[i]; break;
+            }
+        }
+
+        const curViews  = latest.조회수;
+        const prevViews = base.조회수;
+        const delta     = curViews - prevViews;
+        const growth    = prevViews === 0 ? 0 : parseFloat(((delta / prevViews) * 100).toFixed(2));
+
+        stats.push({
+            id, title: latest.제목,
+            growth, delta, curViews, prevViews,
+            imgUrl: getImageUrl(latest),
+            history: list
+        });
+    }
+    return stats;
+}
+
+
+/* ══════════════════════════════════════════════════
+   20. 초기 실행
 ══════════════════════════════════════════════════ */
 fetchData();
 </script>
