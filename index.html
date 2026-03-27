@@ -580,12 +580,10 @@
             <span class="ai-toggle open" id="aiToggleIcon">▲</span>
         </div>
         <div class="ai-panel-body" id="aiPanelBody">
-            <!-- API 키 -->
-            <div class="ai-key-row" id="aiKeyRow">
-                <label>🔑 API Key</label>
-                <input type="password" class="ai-key-input" id="aiKeyInput" placeholder="sk-ant-api03-...">
-                <button class="ai-key-btn" onclick="saveAiKey()">저장</button>
-                <span class="ai-key-status" id="aiKeyStatus">미설정</span>
+            <!-- 모델 정보 -->
+            <div class="ai-key-row ok" id="aiKeyRow" style="cursor:default;">
+                <label>⚡ Groq</label>
+                <span style="flex:1;color:var(--text-secondary);font-size:12px;" id="aiKeyStatus">llama-3.3-70b-versatile</span>
             </div>
             <!-- 대화 기록 -->
             <div class="ai-chat-area" id="aiChatArea"></div>
@@ -706,7 +704,9 @@
 /* ══════════════════════════════════════════════════
    1. 상수 & 전역 변수
 ══════════════════════════════════════════════════ */
-const API_URL = 'https://script.google.com/macros/s/AKfycbzRCCtKPWzmzmO8ydXVBLRqsPKBjK3zMmx7gO_su7vh7XAcJaUI-VuP7HdQ4jj3Pe9cFw/exec';
+const API_URL      = 'https://script.google.com/macros/s/AKfycbzRCCtKPWzmzmO8ydXVBLRqsPKBjK3zMmx7gO_su7vh7XAcJaUI-VuP7HdQ4jj3Pe9cFw/exec';
+const GROQ_API_KEY = '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';   // ← Groq 키
+const GROQ_MODEL   = 'llama-3.3-70b-versatile';        // 무료 모델
 
 let rawData      = [];       // 전체 원본 데이터
 let novelGroups  = null;     // 소설별 그룹 캐시 (fetchData 이후 1회만 생성)
@@ -1461,33 +1461,21 @@ function toggleAiPanel() {
     toggle.classList.toggle('open', !isOpen);
 }
 
-// API 키 로드 (localStorage)
+// 소스에 저장된 Groq 키 사용
 function loadAiKey() {
-    const saved = localStorage.getItem('novelpia_claude_key');
-    if (!saved) return;
-    document.getElementById('aiKeyInput').value = '••••••••';
-    document.getElementById('aiKeyStatus').textContent = '✓ 설정됨';
-    document.getElementById('aiKeyStatus').classList.add('ok');
-    document.getElementById('aiKeyRow').classList.add('ok');
-}
-
-// API 키 저장
-function saveAiKey() {
-    const val = document.getElementById('aiKeyInput').value.trim();
-    if (!val || val.startsWith('•')) return;
-    if (!val.startsWith('sk-')) {
-        alert('Claude API 키는 sk- 로 시작해야 합니다.');
-        return;
+    const ok = GROQ_API_KEY && !GROQ_API_KEY.includes('여기에');
+    const statusEl = document.getElementById('aiKeyStatus');
+    if (ok) {
+        statusEl.textContent = GROQ_MODEL + ' · 준비됨';
+        statusEl.classList.add('ok');
+    } else {
+        statusEl.textContent = '키 미설정 — 소스의 GROQ_API_KEY를 채워주세요';
+        statusEl.style.color = 'var(--accent-rose)';
     }
-    localStorage.setItem('novelpia_claude_key', val);
-    document.getElementById('aiKeyInput').value = '••••••••';
-    document.getElementById('aiKeyStatus').textContent = '✓ 저장됨';
-    document.getElementById('aiKeyStatus').classList.add('ok');
-    document.getElementById('aiKeyRow').classList.add('ok');
 }
 
 function getAiKey() {
-    return localStorage.getItem('novelpia_claude_key');
+    return GROQ_API_KEY;
 }
 
 // 빠른 질문 버튼
@@ -1514,8 +1502,8 @@ async function sendAiQuery() {
     if (!query) return;
 
     const key = getAiKey();
-    if (!key) {
-        addAiMsg('err', '🔑 먼저 Claude API Key를 입력하고 저장해주세요.');
+    if (!key || key.includes('여기에')) {
+        addAiMsg('err', '🔑 소스 상단 GROQ_API_KEY에 발급받은 키를 입력해주세요.');
         return;
     }
     if (!novelGroups) {
@@ -1563,19 +1551,20 @@ N일간 조회수 증가량 랭킹:
 message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명하세요.`;
 
     try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': key,
-                'anthropic-version': '2023-06-01',
-                'anthropic-dangerous-direct-browser-access': 'true'
+                'Authorization': `Bearer ${key}`
             },
             body: JSON.stringify({
-                model: 'claude-haiku-4-5-20251001',
+                model: GROQ_MODEL,
                 max_tokens: 300,
-                system: systemPrompt,
-                messages: [{ role: 'user', content: query }]
+                temperature: 0,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user',   content: query }
+                ]
             })
         });
 
@@ -1584,8 +1573,8 @@ message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명
             throw new Error(err.error?.message || `HTTP ${res.status}`);
         }
 
-        const data   = await res.json();
-        const rawText = data.content[0].text.trim();
+        const data    = await res.json();
+        const rawText = data.choices[0].message.content.trim();
 
         // JSON 파싱 (마크다운 코드블록 제거)
         const jsonStr = rawText.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
