@@ -1545,10 +1545,13 @@ N일간 조회수 증가량 랭킹:
 하락 Top N (최신 날짜 기준):
 {"action":"declining","limit":10,"message":"한국어 설명"}
 
+제목에 특정 키워드 포함된 소설만 필터:
+{"action":"filter_keyword","keyword":"로판","message":"한국어 설명"}
+
 단순 답변 (화면 변경 없음):
 {"action":"answer","message":"한국어 답변"}
 
-message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명하세요.`;
+message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명하세요. 반드시 JSON만 반환하고 다른 텍스트는 절대 쓰지 마세요.`;
 
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1576,9 +1579,10 @@ message는 한국어로, 어떤 데이터를 표시했는지 간결하게 설명
         const data    = await res.json();
         const rawText = data.choices[0].message.content.trim();
 
-        // JSON 파싱 (마크다운 코드블록 제거)
-        const jsonStr = rawText.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
-        const action  = JSON.parse(jsonStr);
+        // JSON 파싱 — Groq이 앞뒤에 텍스트를 붙이는 경우를 대비해 {} 블록만 추출
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error(`AI 응답을 파싱할 수 없습니다: ${rawText.slice(0,80)}`);
+        const action = JSON.parse(jsonMatch[0]);
 
         loadEl.remove();
         executeAiAction(action);
@@ -1644,6 +1648,23 @@ function executeAiAction(action) {
             applyAiFilter(`🤖 ${date} 기준 하락 Top ${limit}`);
             renderRanking();
             addAiMsg('ai', tag('화면변경') + (action.message || `하락 Top ${limit}`));
+            break;
+        }
+        case 'filter_keyword': {
+            const kw = action.keyword || '';
+            if (!kw) { addAiMsg('ai', '검색할 키워드를 인식하지 못했습니다.'); break; }
+            // 현재 날짜 기준 전체 stats에서 제목에 키워드 포함된 것만 필터
+            const base = calcStats(getLatestDate());
+            const filtered = base.filter(s => s.title && s.title.includes(kw));
+            if (filtered.length === 0) {
+                addAiMsg('ai', `"${kw}"이(가) 포함된 소설이 없습니다.`);
+                break;
+            }
+            allStats = filtered;
+            showAll  = true;
+            applyAiFilter(`🤖 제목에 "${kw}" 포함된 소설 ${filtered.length}개`);
+            renderRanking();
+            addAiMsg('ai', tag('화면변경') + (action.message || `"${kw}" 포함 소설 ${filtered.length}개 표시`));
             break;
         }
         case 'answer':
